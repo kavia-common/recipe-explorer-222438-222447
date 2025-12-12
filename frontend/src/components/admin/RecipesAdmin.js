@@ -89,6 +89,7 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
                   Time {sortTimeAsc ? '▲' : '▼'}
                 </button>
               </th>
+              <th style={th}>Time Bucket</th>
               <th style={th}>Difficulty</th>
               <th style={th}>Avg Rating</th>
               <th style={th}>Reviews</th>
@@ -107,6 +108,15 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
                 <td style={td}><button onClick={() => setSelected(r)} className="theme-toggle" style={{ padding: '4px 8px' }}>{r.title}</button></td>
                 <td style={td}>{r.category}</td>
                 <td style={td}>{Number.isFinite(Number(r.cookingTime)) ? `${Number(r.cookingTime)}m` : '-'}</td>
+                <td style={td}>
+                  {(() => {
+                    const ct = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 30;
+                    if (ct < 10) return '<10';
+                    if (ct < 30) return '<30';
+                    if (ct >= 60) return '60+';
+                    return '30+';
+                  })()}
+                </td>
                 <td style={td}>{r.difficulty || 'Medium'}</td>
                 <td style={td}>{Number(r.averageRating || 0).toFixed(1)}</td>
                 <td style={td}>{Number(r.reviewCount || 0)}</td>

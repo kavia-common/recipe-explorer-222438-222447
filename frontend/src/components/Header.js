@@ -20,6 +20,10 @@ import { SUPPORTED_LANGUAGES, getSelectedLanguage, setSelectedLanguage, tUI } fr
  * - onDifficultyChange: (d: string) => void
  * - difficultyOptions: string[]
  * - onAddRecipe?: () => void
+ * - cookTime: string ('All' | '<10' | '<30' | '>=60')
+ * - onCookTimeChange: (v: string) => void
+ * - quickSnacksOnly: boolean
+ * - onToggleQuickSnacks: () => void
  */
 const Header = ({
   theme,
@@ -36,6 +40,10 @@ const Header = ({
   onDifficultyChange = () => {},
   difficultyOptions = ['All', 'Easy', 'Medium', 'Hard'],
   onAddRecipe = () => {},
+  cookTime = 'All',
+  onCookTimeChange = () => {},
+  quickSnacksOnly = false,
+  onToggleQuickSnacks = () => {},
 }) => {
   const [showNotif, setShowNotif] = useState(false);
   const [lang, setLang] = useState(getSelectedLanguage());
@@ -147,6 +155,41 @@ const Header = ({
               {difficultyOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
+
+          {/* Cook Time selector */}
+          <div aria-label="Cook Time filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>Cook Time</span>
+            <select
+              aria-label="Cook Time select"
+              value={cookTime}
+              onChange={(e) => onCookTimeChange(e.target.value)}
+              style={{
+                border: '1px solid var(--ocean-border)',
+                background: 'var(--ocean-surface)',
+                color: 'var(--ocean-text)',
+                padding: '8px 12px',
+                borderRadius: 999,
+                boxShadow: 'var(--ocean-shadow)'
+              }}
+            >
+              {['All', '<10', '<30', '>=60'].map((opt) => <option key={opt} value={opt}>{opt === '<10' ? 'Under 10 minutes' : opt === '<30' ? 'Under 30 minutes' : opt === '>=60' ? 'Long recipes (>=60)' : 'All'}</option>)}
+            </select>
+          </div>
+
+          {/* Quick Snacks toggle */}
+          <button
+            className="theme-toggle"
+            onClick={onToggleQuickSnacks}
+            aria-pressed={quickSnacksOnly}
+            aria-label="Quick Snacks only"
+            title="Quick Snacks"
+            style={{
+              borderColor: quickSnacksOnly ? 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' : undefined,
+              background: quickSnacksOnly ? 'rgba(37,99,235,0.08)' : undefined
+            }}
+          >
+            🍪 Quick Snacks
+          </button>
 
           {/* Favorites */}
           <button

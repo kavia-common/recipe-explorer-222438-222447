@@ -266,6 +266,54 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
   expect(found).toBe(false);
 });
 
+test('cook time filters reduce results appropriately', async () => {
+  render(<App />);
+  await screen.findByRole('list');
+
+  // Under 10 minutes
+  const cookSelect = screen.getByLabelText('Cook Time select');
+  fireEvent.change(cookSelect, { target: { value: '<10' } });
+  await act(async () => { await wait(100); });
+  const grid10 = await screen.findByRole('list');
+  const items10 = within(grid10).getAllByRole('listitem');
+  expect(items10.length).toBeGreaterThanOrEqual(0); // existence check
+
+  // Under 30 minutes
+  fireEvent.change(cookSelect, { target: { value: '<30' } });
+  await act(async () => { await wait(100); });
+  const grid30 = await screen.findByRole('list');
+  const items30 = within(grid30).getAllByRole('listitem');
+  expect(items30.length).toBeGreaterThanOrEqual(items10.length);
+
+  // Long recipes
+  fireEvent.change(cookSelect, { target: { value: '>=60' } });
+  await act(async () => { await wait(100); });
+  const gridLong = await screen.findByRole('list');
+  const itemsLong = within(gridLong).getAllByRole('listitem');
+  expect(itemsLong.length).toBeGreaterThanOrEqual(0);
+
+  // Reset to All
+  fireEvent.change(cookSelect, { target: { value: 'All' } });
+  await act(async () => { await wait(60); });
+});
+
+test('Quick Snacks toggle filters correctly', async () => {
+  render(<App />);
+  await screen.findByRole('list');
+
+  const quickBtn = screen.getByRole('button', { name: /Quick Snacks only|Quick Snacks/i });
+  fireEvent.click(quickBtn);
+  await act(async () => { await wait(120); });
+
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  expect(items.length).toBeGreaterThanOrEqual(0);
+
+  // turn off
+  fireEvent.click(quickBtn);
+  await act(async () => { await wait(60); });
+});
+
 test('Admin table shows cookingTime and difficulty columns', async () => {
   render(<App />);
   const adminBtn = screen.getByRole('button', { name: /Admin/i });

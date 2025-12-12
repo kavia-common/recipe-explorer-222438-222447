@@ -11,7 +11,7 @@ const RecipeGrid = ({ items, onSelect, isFavorite = () => false, onToggleFavorit
       <div className="card" role="status" style={{ padding: 20, textAlign: 'center' }}>
         <div style={{ fontWeight: 800, marginBottom: 6 }}>No recipes to show</div>
         <div style={{ color: 'var(--ocean-muted)', marginBottom: 12 }}>
-          Try clearing filters or adding a new recipe.
+          Try clearing filters (Favorites, Category, Difficulty, Cook Time, Quick Snacks) or add a new recipe.
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button className="theme-toggle" onClick={() => window.location.reload()}>

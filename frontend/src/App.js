@@ -29,6 +29,8 @@ const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
 const DIFFICULTY_LS_KEY = 'recipeExplorer:selectedDifficulty:v1';
 const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
 const DIFFICULTY_OPTIONS = ['All', 'Easy', 'Medium', 'Hard'];
+const COOK_TIME_LS_KEY = 'app_filter_cook_time';
+const QUICK_SNACKS_LS_KEY = 'app_filter_quick_snacks';
 
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
@@ -58,6 +60,12 @@ function App() {
   const [difficulty, setDifficulty] = useState(() => {
     try { return window.localStorage.getItem(DIFFICULTY_LS_KEY) || 'All'; } catch { return 'All'; }
   });
+  const [cookTime, setCookTime] = useState(() => {
+    try { return window.localStorage.getItem(COOK_TIME_LS_KEY) || 'All'; } catch { return 'All'; }
+  });
+  const [quickSnacksOnly, setQuickSnacksOnly] = useState(() => {
+    try { return window.localStorage.getItem(QUICK_SNACKS_LS_KEY) === 'true'; } catch { return false; }
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -69,6 +77,12 @@ function App() {
   useEffect(() => {
     try { window.localStorage.setItem(DIFFICULTY_LS_KEY, difficulty); } catch {}
   }, [difficulty]);
+  useEffect(() => {
+    try { window.localStorage.setItem(COOK_TIME_LS_KEY, cookTime); } catch {}
+  }, [cookTime]);
+  useEffect(() => {
+    try { window.localStorage.setItem(QUICK_SNACKS_LS_KEY, String(quickSnacksOnly)); } catch {}
+  }, [quickSnacksOnly]);
 
   useEffect(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -118,7 +132,7 @@ function App() {
               ...r,
               category: normalizeCategory(r),
               ingredients: ingredientsArray,
-              cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 0,
+              cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null,
               difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium',
             };
             const withAdmin = normalizeAdminFields(base, { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' });
@@ -179,7 +193,7 @@ function App() {
             const ingredientsText = ingredientsArray.join(' ');
             const cat = r.category || 'Veg';
             const withAdmin = normalizeAdminFields(
-              { ...r, category: cat, ingredients: ingredientsArray, cookingTime: Number(r.cookingTime) || 0, difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium' },
+              { ...r, category: cat, ingredients: ingredientsArray, cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null, difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium' },
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
             const rating = getRatingSummary(withAdmin.id);
@@ -267,6 +281,27 @@ function App() {
       const d = difficulty.toLowerCase();
       base = base.filter((r) => (r._difficultyText || String(r.difficulty || 'Medium').toLowerCase()) === d);
     }
+    // Cook Time filter
+    if (cookTime && cookTime !== 'All') {
+      base = base.filter((r) => {
+        const ct = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 30; // default compare as 30
+        if (cookTime === '<10') return ct < 10;
+        if (cookTime === '<30') return ct < 30;
+        if (cookTime === '>=60') return ct >= 60;
+        return true;
+      });
+    }
+    // Quick Snacks virtual filter
+    if (quickSnacksOnly) {
+      base = base.filter((r) => {
+        const ct = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 30;
+        const isQuickTime = ct <= 15;
+        const tagsText = (r._tagsText ?? (r.tags || []).map((t) => String(t)).join(' ').toLowerCase());
+        const titleText = (r._titleText ?? String(r.title || '').toLowerCase());
+        const hasSnackWord = tagsText.includes('snack') || titleText.includes('snack');
+        return isQuickTime || hasSnackWord;
+      });
+    }
     if (!q) return base;
     return base.filter((r) => {
       const titleMatch = (r._titleText ?? String(r.title || '').toLowerCase()).includes(q);
@@ -275,7 +310,7 @@ function App() {
       const descMatch = (r._descText ?? String(r.description || '').toLowerCase()).includes(q);
       return titleMatch || ingredientsMatch || tagsMatch || descMatch;
     });
-  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty]);
+  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty, cookTime, quickSnacksOnly]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -303,7 +338,7 @@ function App() {
     const ing = Array.isArray(r.ingredients) ? r.ingredients : [];
     const cat = r.category || 'Veg';
     const difficulty = ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium';
-    const cookingTime = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 0;
+    const cookingTime = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null;
     return {
       ...r,
       category: cat,
@@ -472,6 +507,10 @@ function App() {
         onDifficultyChange={(d) => setDifficulty(d)}
         difficultyOptions={DIFFICULTY_OPTIONS}
         onAddRecipe={() => setShowForm(true)}
+        cookTime={cookTime}
+        onCookTimeChange={setCookTime}
+        quickSnacksOnly={quickSnacksOnly}
+        onToggleQuickSnacks={() => setQuickSnacksOnly(v => !v)}
       />
 
       {renderMain()}
