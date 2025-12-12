@@ -182,7 +182,20 @@ function App() {
               _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
             };
           });
-          setRecipes(normalized);
+          // If after merge there are no approved recipes, seed by ensuring at least two are approved
+          const approved = filterApproved(normalized);
+          if (approved.length === 0 && normalized.length > 0) {
+            const toApproveIds = normalized.slice(0, Math.min(2, normalized.length)).map(r => r.id);
+            const seeded = normalized.map(r => toApproveIds.includes(r.id) ? { ...r, status: 'approved' } : r);
+            try {
+              // persist to local storage so refresh keeps them approved
+              const { setLocalRecipes } = require('./data/recipes');
+              setLocalRecipes(seeded);
+            } catch {}
+            setRecipes(seeded);
+          } else {
+            setRecipes(normalized);
+          }
         }
       } catch {
         // Any unexpected error -> fallback to mock silently; keep UI responsive
@@ -236,14 +249,17 @@ function App() {
 
   // Router: listen for hash changes
   useEffect(() => {
-    const onHash = () => setRoute(getCurrentRoute());
+    const onHash = () => {
+      const r = getCurrentRoute() || '/';
+      setRoute(r);
+    };
     window.addEventListener('hashchange', onHash);
-    // initial correction
-    if (!window.location.hash && route !== '/') {
-      navigateTo(route);
+    // initial correction to root if no hash
+    if (!window.location.hash) {
+      navigateTo('/');
     }
     return () => window.removeEventListener('hashchange', onHash);
-  }, [route]);
+  }, []);
 
   // Keep favorites state in sync if storage changes (multi-tab)
   useEffect(() => {
@@ -294,7 +310,7 @@ function App() {
       // Combined match: name/title OR ingredients (and we keep tags/desc for broader search like before)
       return titleMatch || ingredientsMatch || tagsMatch || descMatch;
     });
-  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category]);
+  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -312,6 +328,13 @@ function App() {
     setEditing(null);
     setShowForm(true);
   };
+
+  // Allow external trigger (from RecipeGrid empty CTA) to open Add Recipe
+  useEffect(() => {
+    const handler = () => openAdd();
+    window.addEventListener('openAddRecipe', handler);
+    return () => window.removeEventListener('openAddRecipe', handler);
+  }, []);
 
   const openEditFromCard = (recipe) => {
     setEditing(recipe);
