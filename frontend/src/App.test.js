@@ -29,6 +29,12 @@ async function addRecipeFlow() {
   const catBtn = screen.getByRole('button', { name: 'Desserts' });
   fireEvent.click(catBtn);
 
+  // Set cooking time and difficulty
+  const timeInput = screen.getByLabelText(/Cooking Time/i);
+  fireEvent.change(timeInput, { target: { value: '35' } });
+  const diffSelect = screen.getByLabelText(/Difficulty/i);
+  fireEvent.change(diffSelect, { target: { value: 'Hard' } });
+
   const saveBtn = screen.getByRole('button', { name: /Add Recipe/i });
   fireEvent.click(saveBtn);
 
@@ -110,7 +116,22 @@ test('search by title returns matching items', async () => {
   expect(itemsAfter.length).toBeGreaterThan(0);
 });
 
-test('search by ingredient returns matching items', async () => {
+test('difficulty filter affects displayed list', async () => {
+  render(<App />);
+  // Wait initial grid
+  await screen.findByRole('list');
+
+  // Select difficulty Easy
+  const diffSelect = screen.getByLabelText('Difficulty select');
+  fireEvent.change(diffSelect, { target: { value: 'Easy' } });
+
+  await act(async () => { await wait(50); });
+
+  // There should be at least one item with Easy in mock
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  expect(items.length).toBeGreaterThan(0);
+});
   render(<App />);
 
   // wait for initial list
@@ -207,6 +228,20 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
   expect(found).toBe(false);
 });
 
+test('Admin table shows cookingTime and difficulty columns', async () => {
+  render(<App />);
+  // Navigate to Admin Recipes
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+  await act(async () => { await wait(50); });
+  const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
+  fireEvent.click(recipesTab);
+  await act(async () => { await wait(50); });
+  // Column headers should include Time and Difficulty
+  expect(await screen.findByText(/Time/)).toBeInTheDocument();
+  expect(await screen.findByText(/Difficulty/)).toBeInTheDocument();
+});
+
 test('Admin edit/delete works', async () => {
   render(<App />);
   await addRecipeFlow();
@@ -253,6 +288,42 @@ test('Admin edit/delete works', async () => {
   const itemsAfter = within(gridAfter).getAllByRole('listitem');
   const foundAfter = itemsAfter.some((li) => within(li).queryByText('Test Brownie Admin Edited'));
   expect(foundAfter).toBe(false);
+});
+
+test('new fields appear in Add Recipe form and can be saved', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Go to admin approvals and approve so it shows in main feed
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+  await act(async () => { await wait(50); });
+  const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });
+  fireEvent.click(approvalsTab);
+  await act(async () => { await wait(50); });
+  const approveBtn = await screen.findByRole('button', { name: 'Approve' });
+  fireEvent.click(approveBtn);
+  await act(async () => { await wait(50); });
+
+  // Back to main
+  window.location.hash = '#/';
+  await act(async () => { await wait(80); });
+
+  // Search and open
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  const grid = await screen.findByRole('list');
+  const card = within(grid).getAllByRole('listitem')[0];
+  // Should show difficulty/cooking time badges text
+  expect(card).toHaveTextContent(/⏱️/);
+  expect(card).toHaveTextContent(/🎯/);
+
+  fireEvent.click(card);
+  const modal = await screen.findByRole('dialog');
+  expect(modal).toHaveTextContent(/⏱️ 35m/);
+  expect(modal).toHaveTextContent(/🎯 Hard/);
 });
 
 test('editing a recipe updates its card and detail', async () => {

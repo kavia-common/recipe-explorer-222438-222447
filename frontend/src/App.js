@@ -18,7 +18,9 @@ import RecipesAdmin from './components/admin/RecipesAdmin';
 import Approvals from './components/admin/Approvals';
 
 const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
+const DIFFICULTY_LS_KEY = 'recipeExplorer:selectedDifficulty:v1';
 const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
+const DIFFICULTY_OPTIONS = ['All', 'Easy', 'Medium', 'Hard'];
 
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
@@ -50,6 +52,13 @@ function App() {
       return 'All';
     }
   });
+  const [difficulty, setDifficulty] = useState(() => {
+    try {
+      return window.localStorage.getItem(DIFFICULTY_LS_KEY) || 'All';
+    } catch {
+      return 'All';
+    }
+  });
 
   // Apply theme to document
   useEffect(() => {
@@ -64,6 +73,15 @@ function App() {
       // ignore storage errors
     }
   }, [category]);
+
+  // Persist selected difficulty
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DIFFICULTY_LS_KEY, difficulty);
+    } catch {
+      // ignore
+    }
+  }, [difficulty]);
 
   // Debounce search query updates (200ms)
   useEffect(() => {
@@ -141,6 +159,9 @@ function App() {
               ...r,
               category: normalizeCategory(r),
               ingredients: ingredientsArray,
+              // new fields with defaults for backward compatibility
+              cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 0,
+              difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium',
             };
             const withAdmin = normalizeAdminFields(
               // mock defaults: source mock; approved
@@ -154,6 +175,7 @@ function App() {
               _descText: String(withAdmin.description || '').toLowerCase(),
               _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
               _categoryText: String(withAdmin.category || '').toLowerCase(),
+              _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
             };
           });
           setRecipes(normalized);
@@ -174,7 +196,13 @@ function App() {
             const ingredientsText = ingredientsArray.join(' ');
             const cat = r.category || 'Veg';
             const withAdmin = normalizeAdminFields(
-              { ...r, category: cat, ingredients: ingredientsArray },
+              { 
+                ...r, 
+                category: cat, 
+                ingredients: ingredientsArray,
+                cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 0,
+                difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium',
+              },
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
             return {
@@ -184,6 +212,7 @@ function App() {
               _descText: String(withAdmin.description || '').toLowerCase(),
               _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
               _categoryText: String(cat).toLowerCase(),
+              _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
             };
           });
           setRecipes(normalized);
@@ -239,6 +268,12 @@ function App() {
       });
     }
 
+    // Difficulty filter (optional header control)
+    if (difficulty && difficulty !== 'All') {
+      const d = difficulty.toLowerCase();
+      base = base.filter((r) => (r._difficultyText || String(r.difficulty || 'Medium').toLowerCase()) === d);
+    }
+
     // Search filter (combined: title/name and ingredients; also include tags/desc as before)
     if (!q) return base;
     return base.filter((r) => {
@@ -289,14 +324,19 @@ function App() {
   const normalizeForSearch = (r) => {
     const ing = Array.isArray(r.ingredients) ? r.ingredients : [];
     const cat = r.category || 'Veg';
+    const difficulty = ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium';
+    const cookingTime = Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : 0;
     return {
       ...r,
       category: cat,
+      difficulty,
+      cookingTime,
       _ingredientsText: ing.join(' ').toLowerCase(),
       _titleText: String(r.title || '').toLowerCase(),
       _descText: String(r.description || '').toLowerCase(),
       _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
       _categoryText: String(cat).toLowerCase(),
+      _difficultyText: difficulty.toLowerCase(),
     };
   };
 
@@ -409,6 +449,9 @@ function App() {
         category={category}
         onCategoryChange={(c) => setCategory(c)}
         categoryOptions={CATEGORY_OPTIONS}
+        difficulty={difficulty}
+        onDifficultyChange={(d) => setDifficulty(d)}
+        difficultyOptions={DIFFICULTY_OPTIONS}
         onAddRecipe={openAdd}
       />
       {/* Routing: "/" main feed, "/admin/*" admin pages */}

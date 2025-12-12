@@ -143,5 +143,17 @@ export function computeAnalytics(recipesArray) {
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
 
-  return { total, approved, pending, categoryCounts, favoritesTotal, topFavorited, recentlyAdded };
+  // Difficulty distribution
+  const diffKeys = ['Easy','Medium','Hard'];
+  const difficultyCounts = diffKeys.reduce((acc, d) => {
+    acc[d] = arr.filter((r) => (r.difficulty || 'Medium') === d).length;
+    return acc;
+  }, {});
+  // Average cooking time
+  const times = arr
+    .map((r) => Number(r.cookingTime))
+    .filter((n) => Number.isFinite(n) && n >= 0);
+  const averageCookingTime = times.length ? Math.round(times.reduce((a,b)=>a+b,0) / times.length) : 0;
+
+  return { total, approved, pending, categoryCounts, favoritesTotal, topFavorited, recentlyAdded, difficultyCounts, averageCookingTime };
 }

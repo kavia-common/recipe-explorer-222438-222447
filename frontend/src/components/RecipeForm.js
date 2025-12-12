@@ -22,6 +22,10 @@ const RecipeForm = ({ initial = null, onCancel = () => {}, onSave = () => {} }) 
   );
   const [category, setCategory] = useState(initial?.category || 'Veg');
   const [tagsText, setTagsText] = useState(Array.isArray(initial?.tags) ? initial.tags.join(', ') : '');
+  const [cookingTime, setCookingTime] = useState(
+    Number.isFinite(Number(initial?.cookingTime)) && Number(initial?.cookingTime) >= 0 ? Number(initial.cookingTime) : 0
+  );
+  const [difficulty, setDifficulty] = useState(['Easy','Medium','Hard'].includes(initial?.difficulty) ? initial.difficulty : 'Medium');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -32,8 +36,9 @@ const RecipeForm = ({ initial = null, onCancel = () => {}, onSave = () => {} }) 
   }, [category]);
 
   const canSave = useMemo(() => {
-    return title.trim().length > 0 && CATEGORIES.includes(category);
-  }, [title, category]);
+    const timeOk = Number.isFinite(Number(cookingTime)) && Number(cookingTime) >= 0;
+    return title.trim().length > 0 && CATEGORIES.includes(category) && timeOk;
+  }, [title, category, cookingTime]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -63,6 +68,8 @@ const RecipeForm = ({ initial = null, onCancel = () => {}, onSave = () => {} }) 
       steps,
       tags,
       category,
+      cookingTime: Number(cookingTime) >= 0 ? Number(cookingTime) : 0,
+      difficulty: ['Easy','Medium','Hard'].includes(difficulty) ? difficulty : 'Medium',
     };
     onSave(draft);
   };
@@ -182,6 +189,39 @@ Mix ingredients
           style={inputStyle}
           placeholder="pizza, basil, vegetarian"
         />
+      </div>
+
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+        <div style={fieldWrap}>
+          <label style={labelStyle} htmlFor="rf-time">Cooking Time (minutes)</label>
+          <input
+            id="rf-time"
+            type="number"
+            min={0}
+            value={cookingTime}
+            onChange={(e) => {
+              const v = e.target.value;
+              const num = Number(v);
+              if (Number.isNaN(num)) setCookingTime(0);
+              else setCookingTime(num < 0 ? 0 : num);
+            }}
+            style={inputStyle}
+            placeholder="e.g., 30"
+          />
+        </div>
+        <div style={fieldWrap}>
+          <label style={labelStyle} htmlFor="rf-difficulty">Difficulty</label>
+          <select
+            id="rf-difficulty"
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+            style={{ ...inputStyle, padding: '10px 12px' }}
+          >
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>

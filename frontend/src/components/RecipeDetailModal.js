@@ -26,7 +26,19 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Recipe details for ${recipe.title}`} onClick={onClose}>
       <div className="modal" onClick={(e)=>e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">{recipe.title}</div>
+          <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span>{recipe.title}</span>
+            {Number.isFinite(Number(recipe.cookingTime)) && Number(recipe.cookingTime) >= 0 && (
+              <span className="tag" aria-label={`Cooking time ${recipe.cookingTime} minutes`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                ⏱️ {Number(recipe.cookingTime)}m
+              </span>
+            )}
+            {recipe.difficulty && (
+              <span className="tag" aria-label={`Difficulty ${recipe.difficulty}`} style={{ background: 'rgba(245,158,11,0.10)', borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))' }}>
+                🎯 {recipe.difficulty}
+              </span>
+            )}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}

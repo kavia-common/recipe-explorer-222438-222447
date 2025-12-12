@@ -16,15 +16,26 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
+  const [sortTimeAsc, setSortTimeAsc] = useState(true);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return recipes;
-    return recipes.filter((r) => {
-      const title = String(r.title || '').toLowerCase();
-      const category = String(r.category || '').toLowerCase();
-      return title.includes(q) || category.includes(q);
+    let base = recipes;
+    if (q) {
+      base = base.filter((r) => {
+        const title = String(r.title || '').toLowerCase();
+        const category = String(r.category || '').toLowerCase();
+        return title.includes(q) || category.includes(q);
+      });
+    }
+    // optional sort by cooking time
+    const sorted = [...base].sort((a, b) => {
+      const at = Number.isFinite(Number(a.cookingTime)) ? Number(a.cookingTime) : 0;
+      const bt = Number.isFinite(Number(b.cookingTime)) ? Number(b.cookingTime) : 0;
+      return sortTimeAsc ? at - bt : bt - at;
     });
-  }, [recipes, query]);
+    return sorted;
+  }, [recipes, query, sortTimeAsc]);
 
   const onEdit = (r) => { setEditing(r); };
   const onDelete = (r) => { setToDelete(r); setConfirmOpen(true); };
@@ -73,6 +84,12 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
             <tr>
               <th style={th}>Title</th>
               <th style={th}>Category</th>
+              <th style={th}>
+                <button className="theme-toggle" onClick={() => setSortTimeAsc((v)=>!v)} title="Sort by cooking time" style={{ padding: '4px 8px' }}>
+                  Time {sortTimeAsc ? '▲' : '▼'}
+                </button>
+              </th>
+              <th style={th}>Difficulty</th>
               <th style={th}>Status</th>
               <th style={th}>Source</th>
               <th style={th}>Created</th>
@@ -85,6 +102,8 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
               <tr key={r.id} style={{ background: 'var(--ocean-surface)' }}>
                 <td style={td}><button onClick={() => setSelected(r)} className="theme-toggle" style={{ padding: '4px 8px' }}>{r.title}</button></td>
                 <td style={td}>{r.category}</td>
+                <td style={td}>{Number.isFinite(Number(r.cookingTime)) ? `${Number(r.cookingTime)}m` : '-'}</td>
+                <td style={td}>{r.difficulty || 'Medium'}</td>
                 <td style={td}><StatusBadge status={r.status} /></td>
                 <td style={td}>{r.source || 'user'}</td>
                 <td style={td}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</td>

@@ -8,6 +8,8 @@ export const mockRecipes = [
     ingredients: ['2 chicken breasts', '1 lemon', '2 cloves garlic', '2 tbsp olive oil', 'Fresh rosemary', 'Salt & pepper'],
     steps: ['Mix marinade', 'Coat chicken and rest 30min', 'Grill 5-6 min per side', 'Rest and serve'],
     category: 'Non-Veg',
+    cookingTime: 30,
+    difficulty: 'Medium',
   },
   {
     id: 2,
@@ -18,6 +20,8 @@ export const mockRecipes = [
     ingredients: ['200g pasta', '200g mushrooms', '1 cup cream', 'Parmesan', 'Butter', 'Garlic'],
     steps: ['Boil pasta', 'Sauté mushrooms with garlic', 'Add cream', 'Combine and top with parmesan'],
     category: 'Veg',
+    cookingTime: 25,
+    difficulty: 'Easy',
   },
   {
     id: 3,
@@ -28,6 +32,8 @@ export const mockRecipes = [
     ingredients: ['2 slices sourdough', '1 avocado', 'Lemon juice', 'Chili flakes', 'Olive oil', 'Salt'],
     steps: ['Toast bread', 'Smash avocado with lemon and salt', 'Spread and garnish'],
     category: 'Veg',
+    cookingTime: 10,
+    difficulty: 'Easy',
   },
   {
     id: 4,
@@ -38,6 +44,8 @@ export const mockRecipes = [
     ingredients: ['Greek yogurt', 'Granola', 'Mixed berries', 'Honey'],
     steps: ['Layer yogurt, berries, and granola', 'Drizzle with honey'],
     category: 'Desserts',
+    cookingTime: 5,
+    difficulty: 'Easy',
   },
   {
     id: 5,
@@ -48,6 +56,8 @@ export const mockRecipes = [
     ingredients: ['Firm tofu', 'Bell peppers', 'Broccoli', 'Soy sauce', 'Chili paste', 'Garlic'],
     steps: ['Crisp tofu', 'Stir-fry veggies', 'Add sauce', 'Combine with tofu and serve'],
     category: 'Veg',
+    cookingTime: 20,
+    difficulty: 'Medium',
   },
   {
     id: 6,
@@ -58,6 +68,8 @@ export const mockRecipes = [
     ingredients: ['Pizza dough', 'Tomato sauce', 'Mozzarella', 'Basil', 'Olive oil'],
     steps: ['Stretch dough', 'Add toppings', 'Bake at high heat', 'Garnish with basil'],
     category: 'Veg',
+    cookingTime: 15,
+    difficulty: 'Easy',
   },
   {
     id: 7,
@@ -68,6 +80,8 @@ export const mockRecipes = [
     ingredients: ['Shrimp', 'Butter', 'Garlic', 'Parsley', 'Lemon'],
     steps: ['Sauté garlic in butter', 'Add shrimp', 'Finish with lemon and parsley'],
     category: 'Non-Veg',
+    cookingTime: 12,
+    difficulty: 'Easy',
   },
   {
     id: 8,
@@ -78,6 +92,8 @@ export const mockRecipes = [
     ingredients: ['Beef chunks', 'Potatoes', 'Carrots', 'Onion', 'Beef stock', 'Tomato paste'],
     steps: ['Brown beef', 'Add veg and stock', 'Simmer until tender'],
     category: 'Non-Veg',
+    cookingTime: 120,
+    difficulty: 'Hard',
   },
   // Example drink
   {
@@ -89,5 +105,7 @@ export const mockRecipes = [
     ingredients: ['Orange juice', 'Lime', 'Mint', 'Soda', 'Ice'],
     steps: ['Muddle mint', 'Add juices and ice', 'Top with soda and serve'],
     category: 'Drinks',
+    cookingTime: 3,
+    difficulty: 'Easy',
   }
 ];

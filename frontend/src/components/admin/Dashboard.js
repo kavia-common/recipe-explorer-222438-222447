@@ -30,20 +30,30 @@ const Dashboard = ({ recipes }) => {
   };
 
   const catMax = Math.max(1, ...Object.values(metrics.categoryCounts));
+  const diffMax = Math.max(1, ...Object.values(metrics.difficultyCounts || {}));
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
       <div className="card" style={{ padding: 12 }}>
         <div style={{ fontWeight: 800, marginBottom: 8 }}>Totals</div>
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div className="alert"><div>Total</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.total}</div></div>
           <div className="alert"><div>Approved</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.approved}</div></div>
           <div className="alert"><div>Pending</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.pending}</div></div>
+          <div className="alert"><div>Avg Time</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.averageCookingTime}m</div></div>
         </div>
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>Category distribution</div>
           <div style={{ display: 'grid', gap: 8 }}>
             {Object.entries(metrics.categoryCounts).map(([cat, count]) => (
               <Bar key={cat} label={cat} value={count} max={catMax} />
+            ))}
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>Difficulty distribution</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {Object.entries(metrics.difficultyCounts || {}).map(([d, c]) => (
+              <Bar key={d} label={d} value={c} max={diffMax} />
             ))}
           </div>
         </div>

@@ -11,7 +11,7 @@ import React from 'react';
  * - onDelete?: (recipe) => void
  */
 const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
-  const { title, image, description, tags = [], category } = recipe;
+  const { title, image, description, tags = [], category, cookingTime, difficulty } = recipe;
   const fav = isFavorite(recipe.id);
 
   const catChipStyle = {
@@ -119,6 +119,19 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
         alt={title}
         onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/640x360?food,meal&sig=${recipe.id}`; }}
       />
+      {/* Badges row */}
+      <div style={{ position: 'absolute', bottom: 150, left: 10, display: 'flex', gap: 6 }}>
+        {Number.isFinite(Number(cookingTime)) && Number(cookingTime) >= 0 && (
+          <span className="tag" aria-label={`Cooking time ${cookingTime} minutes`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+            ⏱️ {Number(cookingTime)}m
+          </span>
+        )}
+        {difficulty && (
+          <span className="tag" aria-label={`Difficulty ${difficulty}`} style={{ background: 'rgba(245,158,11,0.10)', borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))' }}>
+            🎯 {difficulty}
+          </span>
+        )}
+      </div>
       <div className="card-body">
         <h3 className="card-title">{title}</h3>
         <p className="card-desc">{description}</p>

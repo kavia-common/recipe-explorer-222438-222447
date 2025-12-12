@@ -14,6 +14,9 @@ import { navigateTo } from '../data/admin';
  * - category: string
  * - onCategoryChange: (cat: string) => void
  * - categoryOptions: string[]
+ * - difficulty: string
+ * - onDifficultyChange: (d: string) => void
+ * - difficultyOptions: string[]
  * - onAddRecipe?: () => void
  */
 const Header = ({
@@ -27,6 +30,9 @@ const Header = ({
   category = 'All',
   onCategoryChange = () => {},
   categoryOptions = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'],
+  difficulty = 'All',
+  onDifficultyChange = () => {},
+  difficultyOptions = ['All', 'Easy', 'Medium', 'Hard'],
   onAddRecipe = () => {},
 }) => {
   const Pill = ({ label, active, onClick }) => (
@@ -77,6 +83,26 @@ const Header = ({
                 onClick={() => onCategoryChange(opt)}
               />
             ))}
+          </div>
+
+          {/* Difficulty selector - compact */}
+          <div aria-label="Difficulty filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>Difficulty</span>
+            <select
+              aria-label="Difficulty select"
+              value={difficulty}
+              onChange={(e) => onDifficultyChange(e.target.value)}
+              style={{
+                border: '1px solid var(--ocean-border)',
+                background: 'var(--ocean-surface)',
+                color: 'var(--ocean-text)',
+                padding: '8px 12px',
+                borderRadius: 999,
+                boxShadow: 'var(--ocean-shadow)'
+              }}
+            >
+              {difficultyOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
 
           {/* Fallback compact select for extremely small screens (kept for a11y; visually still usable) */}
