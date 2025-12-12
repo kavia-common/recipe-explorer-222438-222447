@@ -51,6 +51,9 @@ const Header = ({
   onToggleHighProtein = () => {},
   dietTypes = [],
   onDietTypesChange = () => {},
+  // Seasonal filter
+  seasonal = 'All',
+  onSeasonalChange = () => {},
 }) => {
   const [showNotif, setShowNotif] = useState(false);
   const [lang, setLang] = useState(getSelectedLanguage());
@@ -328,6 +331,26 @@ const Header = ({
                 onClick={() => onCategoryChange(opt)}
               />
             ))}
+          </div>
+
+          {/* Seasonal selector */}
+          <div aria-label="Seasonal filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>Season</span>
+            <select
+              aria-label="Seasonal select"
+              value={typeof seasonal !== 'undefined' ? seasonal : 'All'}
+              onChange={(e) => { if (typeof onSeasonalChange === 'function') onSeasonalChange(e.target.value); }}
+              style={{
+                border: '1px solid var(--ocean-border)',
+                background: 'var(--ocean-surface)',
+                color: 'var(--ocean-text)',
+                padding: '8px 12px',
+                borderRadius: 999,
+                boxShadow: 'var(--ocean-shadow)'
+              }}
+            >
+              {['All', 'Summer', 'Winter', 'Festival'].map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
 
           {/* Difficulty selector - compact */}

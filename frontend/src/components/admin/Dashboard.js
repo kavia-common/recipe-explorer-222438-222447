@@ -27,34 +27,6 @@ const Dashboard = ({ recipes }) => {
             }}
           />
         </div>
-
-      <div className="card" style={{ padding: 12 }}>
-        <div style={{ fontWeight: 800, marginBottom: 8 }}>Top Collections (by recipe count)</div>
-        {(() => {
-          const cols = listCollections().sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 5);
-          if (cols.length === 0) return <div className="alert">No collections yet.</div>;
-          return (
-            <ul className="list">
-              {cols.map((c) => (
-                <li key={c.id}>
-                  <span style={{ fontWeight: 600 }}>{c.name}</span>
-                  <span style={{ color: 'var(--ocean-muted)' }}> — {c.count} recipes</span>
-                </li>
-              ))}
-            </ul>
-          );
-        })()}
-      </div>
-
-      <div className="card" style={{ padding: 12 }}>
-        <div style={{ fontWeight: 800, marginBottom: 8 }}>Diet Types</div>
-        {Object.keys(dietCounts).length === 0 && <div className="alert">No diet tags yet.</div>}
-        <div style={{ display: 'grid', gap: 8 }}>
-          {Object.entries(dietCounts).map(([k, v]) => (
-            <Bar key={k} label={k} value={v} max={dietMax} color="var(--ocean-secondary)" />
-          ))}
-        </div>
-      </div>
         <div style={{ marginTop: 6, color: 'var(--ocean-muted)' }}>{value}</div>
       </div>
     );
@@ -81,6 +53,19 @@ const Dashboard = ({ recipes }) => {
     return m;
   }, [recipes]);
   const dietMax = Math.max(1, ...Object.values(dietCounts || {}));
+
+  const seasonalCounts = useMemo(() => {
+    const m = {};
+    (recipes || []).forEach(r => {
+      const tags = Array.isArray(r.seasonalTags) ? r.seasonalTags : [];
+      tags.forEach(t => {
+        const k = String(t).toLowerCase();
+        m[k] = (m[k] || 0) + 1;
+      });
+    });
+    return m;
+  }, [recipes]);
+  const seasonalMax = Math.max(1, ...Object.values(seasonalCounts || {}));
 
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
@@ -179,6 +164,26 @@ const Dashboard = ({ recipes }) => {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Diet Types</div>
+        {Object.keys(dietCounts).length === 0 && <div className="alert">No diet tags yet.</div>}
+        <div style={{ display: 'grid', gap: 8 }}>
+          {Object.entries(dietCounts).map(([k, v]) => (
+            <Bar key={k} label={k} value={v} max={dietMax} color="var(--ocean-secondary)" />
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Seasonal Tags</div>
+        {Object.keys(seasonalCounts).length === 0 && <div className="alert">No seasonal tags yet.</div>}
+        <div style={{ display: 'grid', gap: 8 }}>
+          {Object.entries(seasonalCounts).map(([k, v]) => (
+            <Bar key={k} label={k} value={v} max={seasonalMax} color="var(--ocean-primary)" />
+          ))}
+        </div>
       </div>
 
       <div className="card" style={{ padding: 12 }}>

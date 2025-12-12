@@ -37,6 +37,8 @@ const QUICK_SNACKS_LS_KEY = 'app_filter_quick_snacks';
 const CALORIES_LS_KEY = 'app_filter_calories';
 const HIGH_PROTEIN_LS_KEY = 'app_filter_high_protein';
 const DIET_TYPES_LS_KEY = 'app_filter_diet_types';
+// Seasonal filter key
+const SEASONAL_LS_KEY = 'app_filter_season';
 
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
@@ -88,6 +90,10 @@ function App() {
       return Array.isArray(arr) ? arr : [];
     } catch { return []; }
   });
+  // Seasonal
+  const [seasonal, setSeasonal] = useState(() => {
+    try { return window.localStorage.getItem(SEASONAL_LS_KEY) || 'All'; } catch { return 'All'; }
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -114,6 +120,9 @@ function App() {
   useEffect(() => {
     try { window.localStorage.setItem(DIET_TYPES_LS_KEY, JSON.stringify(dietTypes || [])); } catch {}
   }, [dietTypes]);
+  useEffect(() => {
+    try { window.localStorage.setItem(SEASONAL_LS_KEY, String(seasonal)); } catch {}
+  }, [seasonal]);
 
   useEffect(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -158,6 +167,16 @@ function App() {
             } else if (ingRaw && typeof ingRaw === 'object' && Array.isArray(ingRaw.items)) {
               ingredientsArray = ingRaw.items.map((x) => String(x));
             }
+            // seasonal tags normalization (lowercase array) with backwards compatibility
+            const seasonalRaw = r.seasonalTags;
+            let seasonalTags = [];
+            if (Array.isArray(seasonalRaw)) {
+              seasonalTags = seasonalRaw.map((x) => String(x).toLowerCase());
+            } else if (typeof seasonalRaw === 'string') {
+              seasonalTags = seasonalRaw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+            } else {
+              seasonalTags = [];
+            }
             const ingredientsText = ingredientsArray.join(' ');
             const base = {
               ...r,
@@ -171,6 +190,7 @@ function App() {
               carbs: Number.isFinite(Number(r.carbs)) ? Number(r.carbs) : null,
               fat: Number.isFinite(Number(r.fat)) ? Number(r.fat) : null,
               dietTags: Array.isArray(r.dietTags) ? r.dietTags.map((x) => String(x).toLowerCase()) : [],
+              seasonalTags,
             };
             const withAdmin = normalizeAdminFields(base, { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' });
             const rating = getRatingSummary(withAdmin.id);
@@ -185,6 +205,7 @@ function App() {
               _categoryText: String(withAdmin.category || '').toLowerCase(),
               _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
               _dietTagsText: (withAdmin.dietTags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _seasonalTagsText: (withAdmin.seasonalTags || []).map((t) => String(t)).join(' ').toLowerCase(),
             };
           });
           const approved = filterApproved(normalized);
@@ -230,6 +251,11 @@ function App() {
             }
             const ingredientsText = ingredientsArray.join(' ');
             const cat = r.category || 'Veg';
+            const seasonalRaw = r.seasonalTags;
+            let seasonalTags = [];
+            if (Array.isArray(seasonalRaw)) seasonalTags = seasonalRaw.map((x)=>String(x).toLowerCase());
+            else if (typeof seasonalRaw === 'string') seasonalTags = seasonalRaw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+            else seasonalTags = [];
             const withAdmin = normalizeAdminFields(
               {
                 ...r,
@@ -242,6 +268,7 @@ function App() {
                 carbs: Number.isFinite(Number(r.carbs)) ? Number(r.carbs) : null,
                 fat: Number.isFinite(Number(r.fat)) ? Number(r.fat) : null,
                 dietTags: Array.isArray(r.dietTags) ? r.dietTags.map((x) => String(x).toLowerCase()) : [],
+                seasonalTags,
               },
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
@@ -257,6 +284,7 @@ function App() {
               _categoryText: String(cat).toLowerCase(),
               _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
               _dietTagsText: (withAdmin.dietTags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _seasonalTagsText: (seasonalTags || []).join(' '),
             };
           });
           setRecipes(normalized);
@@ -370,6 +398,15 @@ function App() {
       base = base.filter((r) => Number.isFinite(Number(r.protein)) && Number(r.protein) >= 20);
     }
 
+    // Seasonal filter
+    if (seasonal && seasonal !== 'All') {
+      const wanted = seasonal.toLowerCase();
+      base = base.filter((r) => {
+        const tags = Array.isArray(r.seasonalTags) ? r.seasonalTags.map((x)=>String(x).toLowerCase()) : [];
+        return tags.includes(wanted);
+      });
+    }
+
     // Diet types OR selection: include if any selected tag is present (normalize lowercase)
     if (Array.isArray(dietTypes) && dietTypes.length > 0) {
       const wanted = new Set(dietTypes.map((d) => String(d).toLowerCase()));
@@ -387,7 +424,7 @@ function App() {
       const descMatch = (r._descText ?? String(r.description || '').toLowerCase()).includes(q);
       return titleMatch || ingredientsMatch || tagsMatch || descMatch;
     });
-  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty, cookTime, quickSnacksOnly, caloriesBucket, highProtein, dietTypes]);
+  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty, cookTime, quickSnacksOnly, caloriesBucket, highProtein, dietTypes, seasonal]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -562,6 +599,45 @@ function App() {
     return (
       <main className="container">
         {err && <div role="alert" className="alert alert-warn">{err}</div>}
+        {/* Seasonal Highlights - shown when no filters active and on main route */}
+        {(!debouncedQuery && !showOnlyFavorites && category === 'All' && difficulty === 'All' && cookTime === 'All' && !quickSnacksOnly && caloriesBucket === 'All' && !highProtein && (!dietTypes || dietTypes.length === 0) && seasonal === 'All') && (
+          <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Seasonal Highlights</div>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              {[
+                { key: 'summer', title: 'Summer Drinks', match: (r) => (r.seasonalTags||[]).includes('summer') && (String(r.category||'').toLowerCase() === 'drinks') },
+                { key: 'winter', title: 'Winter Soups', match: (r) => (r.seasonalTags||[]).includes('winter') && ((r._tagsText||'').includes('soup') || (r._titleText||'').includes('soup')) },
+                { key: 'festival', title: 'Festival Specials', match: (r) => (r.seasonalTags||[]).includes('festival') },
+              ].map((sec) => {
+                const items = filterApproved(recipes).filter(sec.match).slice(0, 6);
+                if (items.length === 0) return <div key={sec.key} className="alert">No {sec.title} yet.</div>;
+                return (
+                  <div key={sec.key}>
+                    <button
+                      className="theme-toggle"
+                      aria-label={`View ${sec.title}`}
+                      title={`View ${sec.title}`}
+                      onClick={() => setSeasonal(sec.key.charAt(0).toUpperCase() + sec.key.slice(1))}
+                      style={{ marginBottom: 8, background: 'rgba(37,99,235,0.10)' }}
+                    >
+                      {sec.title} →
+                    </button>
+                    <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                      {items.map((r) => (
+                        <article key={r.id} className="card" onClick={() => setSelected(r)} role="listitem" style={{ cursor: 'pointer' }}>
+                          <img className="card-img" src={r.image || `https://source.unsplash.com/featured/400x220?food&sig=${r.id}`} alt={r.title} />
+                          <div className="card-body">
+                            <div className="card-title" style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="skeleton-grid">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -610,6 +686,9 @@ function App() {
         onToggleHighProtein={() => setHighProtein(v => !v)}
         dietTypes={dietTypes}
         onDietTypesChange={setDietTypes}
+        // Seasonal
+        seasonal={seasonal}
+        onSeasonalChange={setSeasonal}
       />
 
       {renderMain()}
@@ -652,7 +731,7 @@ function App() {
           <div className="modal" onClick={(e)=>e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{editing ? 'Edit Recipe' : 'Add Recipe'}</div>
-              <button className="modal-close" aria-label="Close" onClick={() => setShowForm(false)}>✕</button>
+              <button className="modal-close" aria-label="Close" onClick={() => setShowForm(false)}>×</button>
             </div>
             <div className="modal-body" role="document">
               <RecipeForm

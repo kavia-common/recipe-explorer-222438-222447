@@ -230,7 +230,10 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
         {tags.length > 0 && (
           <div className="taglist" aria-label="tags">
             {tags.map((t, i) => (
-              <span className="tag" key={i}>#{t}</span>
+              <span className="tag" key={`t-${i}`}>#{t}</span>
+            ))}
+            {Array.isArray(recipe.seasonalTags) && recipe.seasonalTags.length > 0 && recipe.seasonalTags.map((t, i) => (
+              <span className="tag" key={`s-${i}`} style={{ background: 'rgba(37,99,235,0.06)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>{t}</span>
             ))}
           </div>
         )}

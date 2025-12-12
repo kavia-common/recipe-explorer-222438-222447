@@ -152,5 +152,6 @@ export const mockRecipes = [
     carbs: 22,
     fat: 0,
     dietTags: ['vegan', 'gluten-free', 'sugar-free'],
+    seasonalTags: ['summer']
   }
 ];
