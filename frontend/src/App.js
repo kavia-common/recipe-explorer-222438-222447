@@ -8,9 +8,12 @@ import RecipeDetailModal from './components/RecipeDetailModal';
 import Header from './components/Header';
 import { getFavoriteIds, toggleFavorite } from './data/favorites';
 
+const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
+const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
+
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
- * - Header: logo/title + search + favorites filter
+ * - Header: logo/title + search + favorites filter + category filter
  * - Content: recipe grid with favorite hearts
  * - Detail: modal view for selected recipe with heart
  */
@@ -23,15 +26,43 @@ function App() {
   const [err, setErr] = useState('');
   const [favoriteIds, setFavoriteIdsState] = useState(() => getFavoriteIds());
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [category, setCategory] = useState(() => {
+    try {
+      return window.localStorage.getItem(CATEGORY_LS_KEY) || 'All';
+    } catch {
+      return 'All';
+    }
+  });
 
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Persist selected category
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CATEGORY_LS_KEY, category);
+    } catch {
+      // ignore storage errors
+    }
+  }, [category]);
+
   // Load recipes from API if configured; otherwise fallback to mock
   useEffect(() => {
     let cancelled = false;
+    const normalizeCategory = (rec) => {
+      // If API lacks category, default to 'Veg' for vegetarian-like tags else 'Veg' as a safe default.
+      const cat = rec.category;
+      if (typeof cat === 'string' && cat.trim()) return cat;
+      const tags = (rec.tags || []).map((t) => String(t).toLowerCase());
+      if (tags.some(t => ['dessert', 'desserts', 'sweet', 'parfait', 'cake'].includes(t))) return 'Desserts';
+      if (tags.some(t => ['drink', 'drinks', 'juice', 'beverage', 'smoothie'].includes(t))) return 'Drinks';
+      if (tags.some(t => ['chicken', 'beef', 'pork', 'seafood', 'shrimp', 'fish'].includes(t))) return 'Non-Veg';
+      if (tags.some(t => ['veg', 'vegetarian', 'vegan', 'tofu', 'salad'].includes(t))) return 'Veg';
+      return 'Veg';
+    };
+
     const load = async () => {
       setLoading(true);
       setErr('');
@@ -46,12 +77,19 @@ function App() {
           data = mockRecipes;
         }
         if (!cancelled) {
-          setRecipes(Array.isArray(data) ? data : []);
+          const arr = Array.isArray(data) ? data : [];
+          // ensure category field exists
+          const withCat = arr.map((r) => ({ ...r, category: normalizeCategory(r) }));
+          setRecipes(withCat);
         }
       } catch (e) {
         if (!cancelled) {
           setErr('Failed to load recipes. Showing offline data.');
-          setRecipes(mockRecipes);
+          const withCat = mockRecipes.map((r) => ({
+            ...r,
+            category: r.category || 'Veg',
+          }));
+          setRecipes(withCat);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -77,21 +115,34 @@ function App() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let base = recipes;
+
+    // Favorites filter
     if (showOnlyFavorites) {
       const favSet = new Set(favoriteIds);
-      base = recipes.filter((r) => favSet.has(r.id));
+      base = base.filter((r) => favSet.has(r.id));
     }
+
+    // Category filter
+    if (category && category !== 'All') {
+      base = base.filter((r) => {
+        const rc = (r.category || '').toString();
+        return rc.toLowerCase() === category.toLowerCase();
+      });
+    }
+
+    // Search filter
     if (!q) return base;
     return base.filter(r => {
       const hay = [
         r.title,
         r.description,
+        r.category,
         ...(r.tags || []),
         ...(r.ingredients || []),
       ].join(' ').toLowerCase();
       return hay.includes(q);
     });
-  }, [recipes, query, favoriteIds, showOnlyFavorites]);
+  }, [recipes, query, favoriteIds, showOnlyFavorites, category]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -115,6 +166,9 @@ function App() {
         showOnlyFavorites={showOnlyFavorites}
         onToggleFavoritesFilter={() => setShowOnlyFavorites(v => !v)}
         favoritesCount={favoriteIds.length}
+        category={category}
+        onCategoryChange={(c) => setCategory(c)}
+        categoryOptions={CATEGORY_OPTIONS}
       />
       <main className="container">
         {err && <div role="alert" className="alert alert-warn">{err}</div>}

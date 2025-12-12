@@ -42,6 +42,22 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
             alt={recipe.title}
             onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/800x400?recipe,food&sig=${recipe.id}`; }}
           />
+          {/* Category chip */}
+          {recipe.category && (
+            <div className="taglist" style={{ marginTop: 8, marginBottom: 8 }}>
+              <span
+                className="tag"
+                aria-label={`Category ${recipe.category}`}
+                style={{
+                  borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))',
+                  background: 'rgba(245,158,11,0.10)',
+                }}
+              >
+                {recipe.category}
+              </span>
+            </div>
+          )}
+
           {recipe.description && <p className="card-desc" style={{marginBottom: 12}}>{recipe.description}</p>}
 
           {Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && (

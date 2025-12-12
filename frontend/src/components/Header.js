@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Header with brand, search input, favorites filter, and theme toggle.
+ * Header with brand, search input, category filter, favorites filter, and theme toggle.
  * Props:
  * - theme: 'light' | 'dark'
  * - onToggleTheme: function to toggle theme
@@ -10,6 +10,9 @@ import React from 'react';
  * - showOnlyFavorites: boolean
  * - onToggleFavoritesFilter: function
  * - favoritesCount: number
+ * - category: string
+ * - onCategoryChange: (cat: string) => void
+ * - categoryOptions: string[]
  */
 const Header = ({
   theme,
@@ -18,8 +21,27 @@ const Header = ({
   onQueryChange,
   showOnlyFavorites = false,
   onToggleFavoritesFilter = () => {},
-  favoritesCount = 0
+  favoritesCount = 0,
+  category = 'All',
+  onCategoryChange = () => {},
+  categoryOptions = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'],
 }) => {
+  const Pill = ({ label, active, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="theme-toggle"
+      aria-pressed={active}
+      style={{
+        padding: '6px 10px',
+        background: active ? 'rgba(37,99,235,0.08)' : 'var(--ocean-surface)',
+        borderColor: active ? 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' : 'var(--ocean-border)',
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <header className="header">
       <div className="header-inner">
@@ -31,7 +53,7 @@ const Header = ({
           </div>
         </div>
 
-        <label className="search-wrap" aria-label="Search recipes">
+        <label className="search-wrap" aria-label="Search recipes" style={{ minWidth: 0 }}>
           <span className="search-icon" aria-hidden>🔎</span>
           <input
             placeholder="Search recipes, ingredients, or tags..."
@@ -41,15 +63,36 @@ const Header = ({
           />
         </label>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            className="theme-toggle"
-            onClick={onToggleTheme}
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            title="Toggle theme"
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Category selector - pills on wide screens */}
+          <div aria-label="Category filter" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {categoryOptions.map((opt) => (
+              <Pill
+                key={opt}
+                label={opt}
+                active={category === opt}
+                onClick={() => onCategoryChange(opt)}
+              />
+            ))}
+          </div>
+
+          {/* Fallback compact select for extremely small screens (kept for a11y; visually still usable) */}
+          <select
+            aria-label="Category select"
+            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            style={{
+              display: 'none',
+              border: '1px solid var(--ocean-border)',
+              background: 'var(--ocean-surface)',
+              color: 'var(--ocean-text)',
+              padding: '8px 12px',
+              borderRadius: 999,
+              boxShadow: 'var(--ocean-shadow)',
+            }}
           >
-            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-          </button>
+            {categoryOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
 
           <button
             className="theme-toggle"
@@ -63,6 +106,15 @@ const Header = ({
             }}
           >
             <span aria-hidden>❤️</span> Favorites{favoritesCount ? ` (${favoritesCount})` : ''}
+          </button>
+
+          <button
+            className="theme-toggle"
+            onClick={onToggleTheme}
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            title="Toggle theme"
+          >
+            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
           </button>
         </div>
       </div>

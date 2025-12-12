@@ -3,14 +3,28 @@ import React from 'react';
 /**
  * RecipeCard shows a single recipe preview.
  * Props:
- * - recipe: { id, title, image, description, tags }
+ * - recipe: { id, title, image, description, tags, category }
  * - onClick: function (card click)
  * - isFavorite?: (id) => boolean
  * - onToggleFavorite?: (id) => void
  */
 const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {} }) => {
-  const { title, image, description, tags = [] } = recipe;
+  const { title, image, description, tags = [], category } = recipe;
   const fav = isFavorite(recipe.id);
+
+  const catChipStyle = {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
+    border: '1px solid color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))',
+    background: 'rgba(245,158,11,0.10)',
+    color: 'var(--ocean-text)',
+    padding: '4px 8px',
+    borderRadius: 999,
+    fontSize: 11,
+    boxShadow: 'var(--ocean-shadow)',
+  };
 
   return (
     <article
@@ -21,6 +35,11 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
       onKeyDown={(e)=>{ if(e.key==='Enter'){ onClick(); }}}
       style={{ position: 'relative' }}
     >
+      {category && (
+        <span style={catChipStyle} aria-label={`Category ${category}`}>
+          {category}
+        </span>
+      )}
       <button
         aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
         title={fav ? 'Remove from favorites' : 'Add to favorites'}
