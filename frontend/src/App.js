@@ -458,20 +458,19 @@ function App() {
   const AdminRouter = ({ route, recipes, setRecipes, err }) => {
     // pass full recipes array (all statuses) to admin pages
     const routeKey = route.replace(/^\/admin\/?/, '') || 'dashboard';
-    let content = null;
     if (routeKey.startsWith('recipes')) {
-      content = <RecipesAdmin recipes={recipes} onRecipesChange={setRecipes} />;
-    } else if (routeKey.startsWith('approvals')) {
-      content = <Approvals recipes={recipes} onRecipesChange={setRecipes} />;
-    } else {
-      content = (
-        <AdminLayout active="dashboard">
-          {err && <div role="alert" className="alert alert-warn">{err}</div>}
-          <Dashboard recipes={recipes} />
-        </AdminLayout>
-      );
+      return <RecipesAdmin recipes={recipes} onRecipesChange={setRecipes} />;
     }
-    return content;
+    if (routeKey.startsWith('approvals')) {
+      return <Approvals recipes={recipes} onRecipesChange={setRecipes} />;
+    }
+    // default dashboard
+    return (
+      <AdminLayout active="dashboard">
+        {err && <div role="alert" className="alert alert-warn">{err}</div>}
+        <Dashboard recipes={recipes} />
+      </AdminLayout>
+    );
   };
 
   return (

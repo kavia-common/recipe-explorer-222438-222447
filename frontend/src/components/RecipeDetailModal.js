@@ -6,20 +6,17 @@ import { getOrCreateUser, getReviewsForRecipe, getRatingSummary, upsertMyReview,
  * PUBLIC_INTERFACE
  */
 const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
-  // Ensure hooks are always called in same order; guard props with defaults.
+  // Always call hooks in the same order. Guard internals with safe fallbacks.
   const rec = recipe || {};
   const recipeId = rec.id;
 
   useEffect(() => {
+    // Only attach listeners when a recipe is open
+    if (!recipe) return;
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
-    if (recipe) {
-      document.addEventListener('keydown', onEsc);
-      // lock body scroll while modal is open
-      document.body.classList.add('body-lock');
-    }
-    if (!recipe) return null;
-
-  return () => {
+    document.addEventListener('keydown', onEsc);
+    document.body.classList.add('body-lock');
+    return () => {
       document.removeEventListener('keydown', onEsc);
       document.body.classList.remove('body-lock');
     };
@@ -117,8 +114,11 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
     );
   };
 
+  if (!recipe) {
+    return null;
+  }
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Recipe details for ${recipe.title}`} onClick={onClose}>
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Recipe details for ${String(recipe.title || '')}`} onClick={onClose}>
       <div className="modal" onClick={(e)=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -173,8 +173,8 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
         <div className="modal-body" role="document">
           <img
             className="detail-img"
-            src={recipe.image}
-            alt={recipe.title}
+            src={recipe.image || `https://source.unsplash.com/featured/800x400?recipe,food&sig=${recipe.id}`}
+            alt={recipe.title || 'Recipe image'}
             onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/800x400?recipe,food&sig=${recipe.id}`; }}
           />
           {/* Category chip */}

@@ -115,8 +115,8 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
       </div>
       <img
         className="card-img"
-        src={image}
-        alt={title}
+        src={image || `https://source.unsplash.com/featured/640x360?food,meal&sig=${recipe.id}`}
+        alt={title || 'Recipe image'}
         onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/640x360?food,meal&sig=${recipe.id}`; }}
       />
       {/* Badges row */}
