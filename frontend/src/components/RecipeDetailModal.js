@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getOrCreateUser, getReviewsForRecipe, getRatingSummary, upsertMyReview, deleteMyReview } from '../data/reviews';
+import { addComment, deleteMyComment, editMyComment, getCommentsForRecipe, getOrCreateCommunityUser, getChefIdForRecipe, getChefNameForRecipe, getFollowerCount, getLikeCount, isFollowing, isLikedByMe, shareRecipe, toggleFollow, toggleLike } from '../data/community';
 
 /**
  * RecipeDetailModal renders selected recipe details in a modal.
@@ -32,6 +33,16 @@ const RecipeDetailModal = ({
   const fav = recipe ? isFavorite(recipe.id) : false;
 
   const [reviews, setReviews] = useState(() => (recipe ? getReviewsForRecipe(recipe.id) : []));
+  // Community state: likes, follows, comments
+  const [likeCount, setLikeCount] = useState(() => (recipe ? getLikeCount(recipe.id) : 0));
+  const [liked, setLiked] = useState(() => (recipe ? isLikedByMe(recipe.id) : false));
+  const chefId = useMemo(() => (recipe ? getChefIdForRecipe(recipe) : ''), [recipe]);
+  const chefName = useMemo(() => (recipe ? getChefNameForRecipe(recipe) : ''), [recipe]);
+  const [following, setFollowing] = useState(() => (chefId ? isFollowing(chefId) : false));
+  const [followers, setFollowers] = useState(() => (chefId ? getFollowerCount(chefId) : 0));
+  const [comments, setComments] = useState(() => (recipe ? getCommentsForRecipe(recipe.id) : []));
+  const [commentText, setCommentText] = useState('');
+  const [commentsShow, setCommentsShow] = useState(5);
   const [showCount, setShowCount] = useState(5);
   const me = getOrCreateUser();
 
@@ -63,6 +74,25 @@ const RecipeDetailModal = ({
       setShowCount(5);
     }
   }, [recipe]);
+
+  useEffect(() => {
+    if (recipe) {
+      setLikeCount(getLikeCount(recipe.id));
+      setLiked(isLikedByMe(recipe.id));
+      setComments(getCommentsForRecipe(recipe.id));
+      setCommentsShow(5);
+      setFollowing(isFollowing(chefId));
+      setFollowers(getFollowerCount(chefId));
+    } else {
+      setComments([]);
+      setCommentText('');
+      setLikeCount(0);
+      setLiked(false);
+      setFollowing(false);
+      setFollowers(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id, chefId]);
 
   const submitReview = (e) => {
     e.preventDefault();
@@ -162,6 +192,44 @@ const RecipeDetailModal = ({
               style={{ padding: '6px 10px' }}
             >
               ✏️ Edit
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={() => {
+                const { liked: l, count } = toggleLike(recipe.id);
+                setLiked(l); setLikeCount(count);
+              }}
+              aria-pressed={liked}
+              aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
+              title={liked ? 'Unlike' : 'Like'}
+              style={{ padding: '6px 10px', background: liked ? 'rgba(37,99,235,0.10)' : undefined }}
+            >
+              {liked ? '💙' : '🤍'} {likeCount > 0 ? likeCount : ''}
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={async () => {
+                const url = `${window.location.origin}${window.location.pathname}#/?id=${encodeURIComponent(String(recipe.id))}`;
+                await shareRecipe({ title: recipe.title, text: 'Check out this recipe!', url });
+              }}
+              aria-label="Share recipe"
+              title="Share"
+              style={{ padding: '6px 10px' }}
+            >
+              🔗 Share
+            </button>
+            <span className="tag" aria-label={`Chef ${chefName}`} style={{ background: 'rgba(37,99,235,0.06)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+              👨‍🍳 {chefName} · {followers} followers
+            </span>
+            <button
+              className="theme-toggle"
+              onClick={() => { const now = toggleFollow(chefId); setFollowing(now); setFollowers(getFollowerCount(chefId)); }}
+              aria-pressed={following}
+              aria-label={following ? 'Unfollow chef' : 'Follow chef'}
+              title={following ? 'Following' : 'Follow'}
+              style={{ padding: '6px 10px', background: following ? 'rgba(37,99,235,0.10)' : undefined }}
+            >
+              {following ? 'Following' : 'Follow'}
             </button>
             <button
               className="theme-toggle"
@@ -287,6 +355,75 @@ const RecipeDetailModal = ({
                 )}
                 <button type="submit" className="theme-toggle" style={{ background: 'rgba(37,99,235,0.10)' }}>
                   {myReview ? 'Save review' : 'Add review'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Comments */}
+          <div className="section-title" style={{ marginTop: 16 }}>Comments</div>
+          {comments.slice(0, commentsShow).map((c) => (
+            <div key={c.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700 }}>{c.authorName || 'Anonymous'}</span>
+                  <span style={{ color: 'var(--ocean-muted)', fontSize: 12 }}>
+                    {c.updatedAt ? new Date(c.updatedAt).toLocaleString() : ''}
+                  </span>
+                </div>
+                {String(c.authorId) === String(getOrCreateCommunityUser().id) && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="theme-toggle" onClick={() => {
+                      const text = window.prompt('Edit your comment', c.comment || '');
+                      if (text != null) {
+                        const next = editMyComment(c.id, String(text).slice(0, 1000));
+                        setComments(next);
+                      }
+                    }}>
+                      Edit
+                    </button>
+                    <button className="theme-toggle" style={{ background: 'rgba(239,68,68,0.12)', borderColor: 'color-mix(in oklab, var(--ocean-error), var(--ocean-border))' }}
+                      onClick={() => {
+                        const next = deleteMyComment(c.id);
+                        setComments(next);
+                      }}>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p style={{ marginTop: 8, marginBottom: 0 }}>{c.comment}</p>
+            </div>
+          ))}
+          {comments.length === 0 && <div className="alert">No comments yet. Be the first to comment.</div>}
+          {comments.length > commentsShow && (
+            <button className="theme-toggle" onClick={() => setCommentsShow((n) => n + 5)} style={{ marginBottom: 8 }}>
+              Show more
+            </button>
+          )}
+
+          <div className="card" style={{ padding: 12, marginTop: 8 }}>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Add a comment</div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const text = String(commentText || '').trim();
+              if (!text) return;
+              const next = addComment({ recipeId: recipe.id, text });
+              setComments(next);
+              setCommentText('');
+            }} style={{ display: 'grid', gap: 10 }}>
+              <label htmlFor="comment-text" style={{ fontWeight: 700, fontSize: 13 }}>Comment</label>
+              <textarea
+                id="comment-text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write your comment (max 1000 chars)"
+                maxLength={1000}
+                style={{ width: '100%', minHeight: 80, resize: 'vertical', border: '1px solid var(--ocean-border)', background: 'var(--ocean-surface)', color: 'var(--ocean-text)', borderRadius: 10, padding: '10px 12px' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button type="submit" className="theme-toggle" style={{ background: 'rgba(37,99,235,0.10)' }}>
+                  Post Comment
                 </button>
               </div>
             </form>

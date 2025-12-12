@@ -12,6 +12,7 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 - Admin section with Dashboard, Recipes management, and Approvals (fully client-side)
 - NEW: Shopping List and Weekly Meal Planning (client-side via localStorage)
 - NEW: Client-side Notifications (Web Notifications API with in-app toast fallback)
+- NEW: Community features (client-side): Comments, Likes/Share, Follow chefs, Chefs page, and Admin community analytics
 
 ## Notifications
 
@@ -74,4 +75,26 @@ Accessibility:
 
 ## Accessibility & Modals
 - Modals (RecipeForm, ConfirmDialog, DetailModal) prevent background scroll while open using a body lock class and are internally scrollable.
+
+## Community (Client-side only)
+Data is stored in localStorage; no backend. Keys:
+- app_comments:v1: array of comments { id, recipeId, authorId, authorName?, comment, createdAt, updatedAt }
+- app_likes:v1: { [userId]: { [recipeId]: true } }
+- app_follows:v1: { [userId]: { followingChefIds: string[] } }
+- app_user_profile:v1: { id, displayName }
+
+Features:
+- Comments: add/edit/delete your own in the Recipe Detail modal; paginated display.
+- Likes: like/unlike from the card or detail; counts update instantly.
+- Share: uses Web Share API or copies link to clipboard with a toast fallback.
+- Chefs: follow/unfollow derived chefs; Chefs page lists chefs with follower counts and top recipes.
+- Settings: set your display name under /#/settings for use in comments.
+
+Privacy:
+- All data is local to your browser and never sent to a server.
+- Clearing browser storage will remove your community data.
+
+Admin:
+- Dashboard shows total comments, total likes, top 5 most-liked recipes, and most-followed chefs.
+- Recipes table includes Likes and Comments columns.
 

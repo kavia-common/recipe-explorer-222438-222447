@@ -91,6 +91,8 @@ const Header = ({
             <button className="theme-toggle" onClick={() => go('/')} title="Home">Home</button>
             <button className="theme-toggle" onClick={() => go('/shopping')} title="Shopping">Shopping</button>
             <button className="theme-toggle" onClick={() => go('/plan')} title="Planning">Planning</button>
+            <button className="theme-toggle" onClick={() => go('/chefs')} title="Chefs">Chefs</button>
+            <button className="theme-toggle" onClick={() => go('/settings')} title="Settings">Settings</button>
             <button
               className="theme-toggle"
               onClick={onAddRecipe}

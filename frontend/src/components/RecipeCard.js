@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { getChefIdForRecipe, getChefNameForRecipe, getLikeCount, isLikedByMe, toggleLike, shareRecipe, isFollowing, toggleFollow } from '../data/community';
 
 /**
  * RecipeCard shows a single recipe preview.
@@ -13,6 +14,30 @@ import React from 'react';
 const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
   const { title, image, description, tags = [], category, cookingTime, difficulty } = recipe;
   const fav = isFavorite(recipe.id);
+
+  // Community local state
+  const [likeCount, setLikeCount] = useState(() => getLikeCount(recipe.id));
+  const [liked, setLiked] = useState(() => isLikedByMe(recipe.id));
+  const chefId = useMemo(() => getChefIdForRecipe(recipe), [recipe]);
+  const chefName = useMemo(() => getChefNameForRecipe(recipe), [recipe]);
+  const [following, setFollowing] = useState(() => isFollowing(chefId));
+
+  const onToggleLike = (e) => {
+    e.stopPropagation();
+    const { liked: l, count } = toggleLike(recipe.id);
+    setLiked(l);
+    setLikeCount(count);
+  };
+  const onShare = async (e) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}${window.location.pathname}#/?id=${encodeURIComponent(String(recipe.id))}`;
+    await shareRecipe({ title: recipe.title, text: 'Check out this recipe!', url });
+  };
+  const onToggleFollow = (e) => {
+    e.stopPropagation();
+    const now = toggleFollow(chefId);
+    setFollowing(now);
+  };
 
   const catChipStyle = {
     position: 'absolute',
@@ -150,6 +175,49 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
             ))}
           </div>
         )}
+
+        {/* Community actions */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              aria-pressed={liked}
+              aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
+              className="theme-toggle"
+              onClick={onToggleLike}
+              title={liked ? 'Unlike' : 'Like'}
+              style={{ padding: '6px 10px', background: liked ? 'rgba(37,99,235,0.10)' : undefined }}
+            >
+              {liked ? '💙' : '🤍'} {likeCount > 0 ? likeCount : ''}
+            </button>
+            <button
+              type="button"
+              aria-label="Share recipe"
+              className="theme-toggle"
+              onClick={onShare}
+              title="Share"
+              style={{ padding: '6px 10px' }}
+            >
+              🔗 Share
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="tag" aria-label={`Chef ${chefName}`} style={{ background: 'rgba(37,99,235,0.06)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+              👨‍🍳 {chefName}
+            </span>
+            <button
+              type="button"
+              aria-pressed={following}
+              aria-label={following ? 'Unfollow chef' : 'Follow chef'}
+              className="theme-toggle"
+              onClick={onToggleFollow}
+              title={following ? 'Following' : 'Follow'}
+              style={{ padding: '6px 10px', background: following ? 'rgba(37,99,235,0.10)' : undefined }}
+            >
+              {following ? 'Following' : 'Follow'}
+            </button>
+          </div>
+        </div>
       </div>
     </article>
   );

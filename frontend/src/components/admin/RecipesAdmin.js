@@ -92,6 +92,8 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
               <th style={th}>Difficulty</th>
               <th style={th}>Avg Rating</th>
               <th style={th}>Reviews</th>
+              <th style={th}>Likes</th>
+              <th style={th}>Comments</th>
               <th style={th}>Status</th>
               <th style={th}>Source</th>
               <th style={th}>Created</th>
@@ -108,6 +110,8 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
                 <td style={td}>{r.difficulty || 'Medium'}</td>
                 <td style={td}>{Number(r.averageRating || 0).toFixed(1)}</td>
                 <td style={td}>{Number(r.reviewCount || 0)}</td>
+                <td style={td}>{require('../../data/community').getLikeCount(r.id)}</td>
+                <td style={td}>{require('../../data/community').getCommentsForRecipe(r.id).length}</td>
                 <td style={td}><StatusBadge status={r.status} /></td>
                 <td style={td}>{r.source || 'user'}</td>
                 <td style={td}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</td>

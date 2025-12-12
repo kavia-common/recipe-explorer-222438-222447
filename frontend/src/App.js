@@ -19,6 +19,8 @@ import RecipesAdmin from './components/admin/RecipesAdmin';
 import Approvals from './components/admin/Approvals';
 import ShoppingListPage from './components/ShoppingListPage';
 import MealPlanPage from './components/MealPlanPage';
+import ChefsPage from './components/ChefsPage';
+import SettingsPage from './components/SettingsPage';
 import { addRecipeIngredientsToShoppingList } from './data/shoppingList';
 import ToastContainer from './components/ToastContainer';
 import { startNotificationScheduler, getNotificationSettings, saveNotificationSettings } from './data/notifications';
@@ -422,6 +424,12 @@ function App() {
           <MealPlanPage />
         </main>
       );
+    }
+    if (route === '/chefs') {
+      return <ChefsPage recipes={recipes} />;
+    }
+    if (route === '/settings') {
+      return <SettingsPage />;
     }
     // Home
     return (

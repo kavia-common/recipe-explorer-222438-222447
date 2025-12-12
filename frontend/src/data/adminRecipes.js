@@ -1,6 +1,7 @@
 import { getLocalRecipes, setLocalRecipes, upsertLocalRecipe, deleteLocalRecipe } from './recipes';
 import { getFavoriteIds, setFavoriteIds } from './favorites';
 import { purgeReviewsForRecipe, computeRatingsAnalytics } from './reviews';
+import { purgeCommentsForRecipe, purgeLikesForRecipe } from './community';
 
 export const RECIPE_STATUS = {
   APPROVED: 'approved',
@@ -84,6 +85,10 @@ export function rejectRecipe(id) {
   }
   // purge all reviews for this recipe
   purgeReviewsForRecipe(idKey);
+  try { purgeCommentsForRecipe(idKey); } catch {}
+  try { purgeLikesForRecipe(idKey); } catch {}
+  try { purgeCommentsForRecipe(idKey); } catch {}
+  try { purgeLikesForRecipe(idKey); } catch {}
   return next;
 }
 
