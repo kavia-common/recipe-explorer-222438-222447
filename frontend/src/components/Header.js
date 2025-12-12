@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { navigateTo } from '../data/admin';
 import NotificationSettings from './NotificationSettings';
 import { SUPPORTED_LANGUAGES, getSelectedLanguage, setSelectedLanguage, tUI } from '../data/i18n';
@@ -83,6 +83,190 @@ const Header = ({
     setSelectedLanguage(value);
   };
 
+  // VoiceSearchButton encapsulates SpeechRecognition wiring and UI
+  const VoiceSearchButton = ({ lang, onTranscript }) => {
+    const [isRecording, setIsRecording] = useState(false);
+    const [supported, setSupported] = useState(true);
+    const recognitionRef = useRef(null);
+    const dotRef = useRef(null);
+
+    // Map app language to SpeechRecognition language codes
+    const recogLang = useMemo(() => {
+      const map = { en: 'en-US', hi: 'hi-IN', te: 'te-IN' };
+      return map[lang] || 'en-US';
+    }, [lang]);
+
+    const SpeechRecognition = useMemo(() => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      return SR;
+    }, []);
+
+    useEffect(() => {
+      if (!SpeechRecognition) {
+        setSupported(false);
+      }
+    }, [SpeechRecognition]);
+
+    // Teeny pulse animation via inline style if needed
+    const pulseStyle = isRecording
+      ? {
+          boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.7)',
+          animation: 'ocean-pulse 1.5s infinite',
+        }
+      : {};
+
+    // start recognition flow
+    const start = () => {
+      if (!SpeechRecognition) {
+        setSupported(false);
+        // Friendly toast fallback
+        try {
+          window.dispatchEvent(new CustomEvent('app:toast', {
+            detail: {
+              title: 'Voice search not available',
+              body: 'Try using Chrome/Edge or enable microphone permissions.',
+            }
+          }));
+        } catch {}
+        return;
+      }
+      try {
+        const recog = new SpeechRecognition();
+        recognitionRef.current = recog;
+        recog.lang = recogLang;
+        recog.interimResults = false;
+        recog.maxAlternatives = 1;
+        setIsRecording(true);
+
+        recog.onresult = (event) => {
+          try {
+            const transcript = event.results?.[0]?.[0]?.transcript || '';
+            if (transcript) {
+              onTranscript(transcript);
+            }
+          } catch {}
+        };
+        recog.onend = () => {
+          setIsRecording(false);
+        };
+        recog.onerror = (e) => {
+          setIsRecording(false);
+          const err = (e && e.error) || 'error';
+          // Graceful, non-blocking toast
+          let msg = 'Voice input error.';
+          if (err === 'no-speech') msg = 'No speech detected. Please try again.';
+          else if (err === 'aborted' || err === 'audio-capture') msg = 'Voice input canceled or microphone unavailable.';
+          else if (err === 'not-allowed' || err === 'service-not-allowed') msg = 'Microphone permission denied.';
+          else if (err === 'network') msg = 'Network error during speech recognition.';
+          try {
+            window.dispatchEvent(new CustomEvent('app:toast', {
+              detail: {
+                title: 'Voice search',
+                body: msg,
+              }
+            }));
+          } catch {}
+        };
+        recog.start();
+      } catch (e) {
+        setIsRecording(false);
+        try {
+          window.dispatchEvent(new CustomEvent('app:toast', {
+            detail: {
+              title: 'Voice search',
+              body: 'Could not start microphone. Please check permissions.',
+            }
+          }));
+        } catch {}
+      }
+    };
+
+    const stop = () => {
+      try {
+        const r = recognitionRef.current;
+        if (r) {
+          r.onresult = null;
+          r.onerror = null;
+          r.onend = null;
+          try { r.stop(); } catch {}
+          recognitionRef.current = null;
+        }
+      } catch {}
+      setIsRecording(false);
+    };
+
+    const toggle = () => {
+      if (isRecording) stop(); else start();
+    };
+
+    const label = isRecording ? 'Stop voice search' : 'Start voice search';
+    const title = isRecording ? 'Stop voice search' : 'Start voice search';
+    const tooltip = isRecording ? 'Listening… click to stop' : 'Search by voice';
+
+    // Hide button if unsupported but we still want a hint toast on click attempt
+    const handleKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    };
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
+        <button
+          type="button"
+          className="theme-toggle"
+          aria-label={label}
+          title={tooltip}
+          onClick={toggle}
+          onKeyDown={handleKey}
+          disabled={!supported}
+          style={{
+            padding: '6px 10px',
+            position: 'relative',
+            borderColor: isRecording ? 'color-mix(in oklab, var(--ocean-error), var(--ocean-border))' : undefined,
+            background: isRecording ? 'rgba(239,68,68,0.10)' : 'var(--ocean-surface)',
+            ...pulseStyle,
+          }}
+        >
+          <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {isRecording ? '🎙️' : '🎤'} <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>{isRecording ? 'Listening' : 'Voice'}</span>
+          </span>
+          {isRecording && (
+            <span
+              ref={dotRef}
+              aria-hidden
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: 'var(--ocean-error)',
+                marginLeft: 8,
+                boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.6)',
+              }}
+              title="Recording"
+            />
+          )}
+        </button>
+        {!supported && (
+          <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }} title="Browser does not support voice search">
+            ⓘ
+          </span>
+        )}
+        <style>
+          {`
+          @keyframes ocean-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+          }
+          `}
+        </style>
+      </div>
+    );
+  };
+
   return (
     <header className="header">
       <div className="header-inner">
@@ -102,7 +286,7 @@ const Header = ({
           </div>
         </div>
 
-        <label className="search-wrap" aria-label={tUI('Search', lang)} style={{ minWidth: 0 }}>
+        <label className="search-wrap" aria-label={tUI('Search', lang)} style={{ minWidth: 0, position: 'relative' }}>
           <span className="search-icon" aria-hidden>🔎</span>
           <input
             placeholder="Search by name or ingredients"
@@ -110,6 +294,8 @@ const Header = ({
             onChange={(e) => onQueryChange(e.target.value)}
             aria-label="Search input"
           />
+          {/** Voice search mic button */}
+          <VoiceSearchButton lang={lang} onTranscript={(text) => onQueryChange(text)} />
         </label>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
