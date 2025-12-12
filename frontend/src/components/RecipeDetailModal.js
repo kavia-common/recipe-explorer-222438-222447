@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getOrCreateUser, getReviewsForRecipe, getRatingSummary, upsertMyReview, deleteMyReview } from '../data/reviews';
 import { addComment, deleteMyComment, editMyComment, getCommentsForRecipe, getOrCreateCommunityUser, getChefIdForRecipe, getChefNameForRecipe, getFollowerCount, getLikeCount, isFollowing, isLikedByMe, shareRecipe, toggleFollow, toggleLike } from '../data/community';
+import { getSelectedLanguage, translateRecipe, tUI, recordTranslatedView } from '../data/i18n';
 
 /**
- * RecipeDetailModal renders selected recipe details in a modal.
+ * RecipeDetailModal renders selected recipe details in a modal, with multilingual support.
  * PUBLIC_INTERFACE
  * @param {{ key:string, label:string, onClick:() => void }[]} [extraActions]
  */
@@ -19,6 +20,9 @@ const RecipeDetailModal = ({
   const rec = recipe || {};
   const recipeId = rec.id;
 
+  const [lang, setLang] = useState(getSelectedLanguage());
+  const [showOriginal, setShowOriginal] = useState(false);
+
   useEffect(() => {
     if (!recipe) return;
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
@@ -29,6 +33,14 @@ const RecipeDetailModal = ({
       document.body.classList.remove('body-lock');
     };
   }, [recipe, onClose]);
+
+  useEffect(() => {
+    setLang(getSelectedLanguage());
+  }, []);
+
+  useEffect(() => {
+    if (lang !== 'en') recordTranslatedView(lang);
+  }, [lang]);
 
   const fav = recipe ? isFavorite(recipe.id) : false;
 
@@ -149,15 +161,26 @@ const RecipeDetailModal = ({
     );
   };
 
+  const translated = useMemo(() => {
+    if (!recipe) return null;
+    if (lang && lang !== 'en') {
+      return translateRecipe(recipe, lang);
+    }
+    return recipe;
+  }, [recipe, lang]);
+
   if (!recipe) {
     return null;
   }
+
+  const active = showOriginal || lang === 'en' ? recipe : (translated || recipe);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Recipe details for ${String(recipe.title || '')}`} onClick={onClose}>
       <div className="modal" onClick={(e)=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span>{recipe.title}</span>
+            <span>{active.title || recipe.title}</span>
             {(summary.reviewCount > 0) && (
               <span className="tag" aria-label={`Average rating ${summary.averageRating} from ${summary.reviewCount} reviews`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
                 ⭐ {summary.averageRating} ({summary.reviewCount})
@@ -175,6 +198,42 @@ const RecipeDetailModal = ({
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <select
+              aria-label={tUI('Language', lang)}
+              value={lang}
+              onChange={(e)=> setLang(e.target.value)}
+              className="theme-toggle"
+              style={{ padding: '6px 10px' }}
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="te">తెలుగు</option>
+            </select>
+            {lang !== 'en' && (
+              <div
+                className="alert"
+                role="status"
+                aria-live="polite"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#EFF6FF',
+                  borderColor: '#BFDBFE',
+                  color: '#111827'
+                }}
+              >
+                {tUI('Translated from English', lang)}
+                <button
+                  className="theme-toggle"
+                  onClick={() => setShowOriginal((s) => !s)}
+                  aria-pressed={showOriginal}
+                  style={{ background: 'rgba(245,158,11,0.20)' }}
+                >
+                  {showOriginal ? tUI('View translation', lang) : tUI('View original', lang)}
+                </button>
+              </div>
+            )}
             <button
               aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
               title={fav ? 'Remove from favorites' : 'Add to favorites'}
@@ -204,7 +263,7 @@ const RecipeDetailModal = ({
               title={liked ? 'Unlike' : 'Like'}
               style={{ padding: '6px 10px', background: liked ? 'rgba(37,99,235,0.10)' : undefined }}
             >
-              {liked ? '💙' : '🤍'} {likeCount > 0 ? likeCount : ''}
+              {liked ? '💙' : '🫶'} {likeCount > 0 ? likeCount : ''}
             </button>
             <button
               className="theme-toggle"
@@ -245,7 +304,7 @@ const RecipeDetailModal = ({
                 {a.label}
               </button>
             ))}
-            <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+            <button className="modal-close" onClick={onClose} aria-label={tUI('Close', lang)}>✕</button>
           </div>
         </div>
         <div className="modal-body" role="document">
@@ -255,42 +314,54 @@ const RecipeDetailModal = ({
             alt={recipe.title || 'Recipe image'}
             onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/800x400?recipe,food&sig=${recipe.id}`; }}
           />
-          {recipe.category && (
+          {active.category && (
             <div className="taglist" style={{ marginTop: 8, marginBottom: 8 }}>
               <span
                 className="tag"
-                aria-label={`Category ${recipe.category}`}
+                aria-label={`Category ${active.category}`}
                 style={{
                   borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))',
                   background: 'rgba(245,158,11,0.10)',
                 }}
               >
-                {recipe.category}
+                {active.category}
               </span>
             </div>
           )}
 
-          {recipe.description && <p className="card-desc" style={{marginBottom: 12}}>{recipe.description}</p>}
+          {active.description && <p className="card-desc" style={{marginBottom: 12}}>{active.description}</p>}
 
-          {Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && (
+          {Array.isArray(active.ingredients) && active.ingredients.length > 0 && (
             <>
-              <div className="section-title">Ingredients</div>
+              <div className="section-title">{tUI('Ingredients', lang)}</div>
               <ul className="list">
-                {recipe.ingredients.map((ing, i) => (
+                {active.ingredients.map((ing, i) => (
                   <li key={i}>{typeof ing === 'string' ? ing : String(ing)}</li>
                 ))}
               </ul>
             </>
           )}
-
-          {Array.isArray(recipe.steps) && recipe.steps.length > 0 && (
+          {!Array.isArray(active.ingredients) && typeof active.ingredients === 'string' && active.ingredients && (
             <>
-              <div className="section-title">Steps</div>
+              <div className="section-title">{tUI('Ingredients', lang)}</div>
+              <p>{active.ingredients}</p>
+            </>
+          )}
+
+          {(Array.isArray(active.steps) && active.steps.length > 0) && (
+            <>
+              <div className="section-title">{tUI('Instructions', lang)}</div>
               <ol className="list">
-                {recipe.steps.map((s, i) => (
+                {active.steps.map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
               </ol>
+            </>
+          )}
+          {!Array.isArray(active.steps) && !Array.isArray(active.instructions) && (active.instructions || active.steps) && (
+            <>
+              <div className="section-title">{tUI('Instructions', lang)}</div>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{active.instructions || active.steps}</p>
             </>
           )}
 

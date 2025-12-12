@@ -58,6 +58,36 @@ test('renders Favorites toggle in header', () => {
   expect(favButton).toBeInTheDocument();
 });
 
+test('language selector persists across reloads', () => {
+  render(<App />);
+  const select = screen.getByLabelText(/Language|भाषा|భాష/i);
+  fireEvent.change(select, { target: { value: 'hi' } });
+  expect(localStorage.getItem('app_language')).toBe('hi');
+});
+
+test('opening a recipe shows translation when lang != en and toggles view original', async () => {
+  render(<App />);
+  // open first recipe card
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  fireEvent.click(items[0]);
+
+  // In modal, choose Hindi
+  const langSelect = await screen.findByLabelText(/Language|भाषा|భాష/i);
+  fireEvent.change(langSelect, { target: { value: 'hi' } });
+
+  // Expect translation banner
+  const banner = await screen.findByText(/Translated from English|अंग्रेज़ी से अनुवादित|ఆంగ్లం నుండి అనువదించబడింది/i);
+  expect(banner).toBeInTheDocument();
+
+  // Toggle view original
+  const toggleBtn = screen.getByRole('button', { name: /View original|मूल देखें|అసలు చూడండి/i });
+  fireEvent.click(toggleBtn);
+
+  // After toggling, button should offer "View translation"
+  expect(screen.getByRole('button', { name: /View translation|अनुवाद देखें|అనువాదాన్ని చూడండి/i })).toBeInTheDocument();
+});
+
 test('can navigate to Shopping and Planning routes', async () => {
   render(<App />);
   const shopping = await screen.findByRole('button', { name: /shopping/i });
@@ -252,7 +282,7 @@ test('Admin edit/delete works', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  const adminBtn = await screen.findByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
   await act(async () => { await wait(50); });
   const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });

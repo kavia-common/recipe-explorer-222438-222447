@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { getChefIdForRecipe, getChefNameForRecipe, getLikeCount, isLikedByMe, toggleLike, shareRecipe, isFollowing, toggleFollow } from '../data/community';
+import { getSelectedLanguage } from '../data/i18n';
 
 /**
  * RecipeCard shows a single recipe preview.
@@ -14,6 +15,10 @@ import { getChefIdForRecipe, getChefNameForRecipe, getLikeCount, isLikedByMe, to
 const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
   const { title, image, description, tags = [], category, cookingTime, difficulty } = recipe;
   const fav = isFavorite(recipe.id);
+
+  // Language badge
+  const lang = getSelectedLanguage();
+  const showLang = lang && lang !== 'en';
 
   // Community local state
   const [likeCount, setLikeCount] = useState(() => getLikeCount(recipe.id));
@@ -67,6 +72,23 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
           {category}
         </span>
       )}
+      {showLang && (
+        <span
+          aria-label={`Language ${lang}`}
+          title={`Language: ${lang}`}
+          className="tag"
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 110,
+            zIndex: 1,
+            background: 'rgba(37,99,235,0.10)',
+            borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))'
+          }}
+        >
+          {lang.toUpperCase()}
+        </span>
+      )}
       <button
         aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
         title={fav ? 'Remove from favorites' : 'Add to favorites'}
@@ -85,7 +107,7 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
           boxShadow: 'var(--ocean-shadow)'
         }}
       >
-        {fav ? '❤️' : '🤍'}
+        {fav ? '❤️' : '🫶'}
       </button>
       <button
         aria-label="More actions"
@@ -188,7 +210,7 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
               title={liked ? 'Unlike' : 'Like'}
               style={{ padding: '6px 10px', background: liked ? 'rgba(37,99,235,0.10)' : undefined }}
             >
-              {liked ? '💙' : '🤍'} {likeCount > 0 ? likeCount : ''}
+              {liked ? '💙' : '🫶'} {likeCount > 0 ? likeCount : ''}
             </button>
             <button
               type="button"

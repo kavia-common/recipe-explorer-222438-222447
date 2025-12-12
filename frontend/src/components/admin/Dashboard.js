@@ -1,15 +1,16 @@
 import React, { useMemo } from 'react';
 import { computeAnalytics } from '../../data/adminRecipes';
 import { getCommunityMetrics } from '../../data/community';
+import { getTranslationStats } from '../../data/i18n';
 
 /**
  * PUBLIC_INTERFACE
- * Admin Dashboard showing analytics without external libs.
+ * Admin Dashboard showing analytics and local translation stats without external libs.
  */
 const Dashboard = ({ recipes }) => {
   const metrics = useMemo(() => computeAnalytics(recipes), [recipes]);
 
-  const Bar = ({ label, value, max }) => {
+  const Bar = ({ label, value, max, color = 'var(--ocean-primary)' }) => {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
     return (
       <div className="card" style={{ padding: 12 }}>
@@ -19,7 +20,7 @@ const Dashboard = ({ recipes }) => {
             style={{
               width: `${pct}%`,
               height: '100%',
-              background: 'var(--ocean-primary)',
+              background: color,
               borderRadius: 999,
               transition: 'width .3s ease'
             }}
@@ -35,6 +36,9 @@ const Dashboard = ({ recipes }) => {
   const dist = metrics.ratingsDistribution || {1:0,2:0,3:0,4:0,5:0};
   const distMax = Math.max(1, ...Object.values(dist));
   const community = useMemo(() => getCommunityMetrics(recipes), [recipes]);
+
+  const translationStats = getTranslationStats();
+  const tsMax = Math.max(1, ...(Object.values(translationStats || {})));
 
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
@@ -133,6 +137,20 @@ const Dashboard = ({ recipes }) => {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Translation Views (Local)</div>
+        {(!translationStats || Object.keys(translationStats).length === 0) && <div className="alert">No translated views yet.</div>}
+        <div role="img" aria-label="Translation language views bar chart" style={{ display: 'grid', gap: 8 }}>
+          {Object.entries(translationStats).map(([lng, count]) => (
+            <div key={lng} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 44, textAlign: 'right' }}>{lng.toUpperCase()}</div>
+              <div style={{ height: 12, width: `${Math.max(8, Math.round((count / tsMax) * 320))}px`, background: 'var(--ocean-secondary)', borderRadius: 6 }} title={`${lng}: ${count}`} />
+              <div>{count}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

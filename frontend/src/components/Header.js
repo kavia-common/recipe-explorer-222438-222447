@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { navigateTo } from '../data/admin';
 import NotificationSettings from './NotificationSettings';
+import { SUPPORTED_LANGUAGES, getSelectedLanguage, setSelectedLanguage, tUI } from '../data/i18n';
 
 /**
- * Header with brand, search input, category filter, favorites filter, theme toggle, and nav.
+ * Header with brand, search input, category filter, favorites filter, theme toggle, nav, and language selector.
  * Props:
  * - theme: 'light' | 'dark'
  * - onToggleTheme: function to toggle theme
@@ -37,6 +38,11 @@ const Header = ({
   onAddRecipe = () => {},
 }) => {
   const [showNotif, setShowNotif] = useState(false);
+  const [lang, setLang] = useState(getSelectedLanguage());
+
+  useEffect(() => {
+    setLang(getSelectedLanguage());
+  }, []);
 
   const Pill = ({ label, active, onClick }) => (
     <button
@@ -55,6 +61,12 @@ const Header = ({
   );
 
   const go = (path) => navigateTo(path);
+
+  const onLangChange = (e) => {
+    const value = e.target.value;
+    setLang(value);
+    setSelectedLanguage(value);
+  };
 
   return (
     <header className="header">
@@ -75,7 +87,7 @@ const Header = ({
           </div>
         </div>
 
-        <label className="search-wrap" aria-label="Search recipes" style={{ minWidth: 0 }}>
+        <label className="search-wrap" aria-label={tUI('Search', lang)} style={{ minWidth: 0 }}>
           <span className="search-icon" aria-hidden>🔎</span>
           <input
             placeholder="Search by name or ingredients"
@@ -100,7 +112,7 @@ const Header = ({
               title="Add Recipe"
               style={{ background: 'rgba(37,99,235,0.10)' }}
             >
-              ➕ Add Recipe
+              ➕ {tUI('Recipes', lang)}
             </button>
           </nav>
 
@@ -118,7 +130,7 @@ const Header = ({
 
           {/* Difficulty selector - compact */}
           <div aria-label="Difficulty filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>Difficulty</span>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>{tUI('Difficulty', lang)}</span>
             <select
               aria-label="Difficulty select"
               value={difficulty}
@@ -159,7 +171,7 @@ const Header = ({
             title="Admin"
             style={{ borderColor: 'var(--ocean-border)' }}
           >
-            🛠️ Admin
+            🛠️ {tUI('Admin', lang)}
           </button>
 
           {/* Notifications bell */}
@@ -172,6 +184,33 @@ const Header = ({
           >
             🔔
           </button>
+
+          {/* Language selector */}
+          <div aria-label={tUI('Language', lang)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden title={tUI('Language', lang)}>🌐</span>
+            <label htmlFor="language-select" className="sr-only">{tUI('Language', lang)}</label>
+            <select
+              id="language-select"
+              aria-label={tUI('Language', lang)}
+              value={lang}
+              onChange={onLangChange}
+              style={{
+                border: '1px solid var(--ocean-border)',
+                background: 'var(--ocean-surface)',
+                color: 'var(--ocean-text)',
+                padding: '8px 12px',
+                borderRadius: 999,
+                boxShadow: 'var(--ocean-shadow)',
+                cursor: 'pointer',
+              }}
+            >
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Theme toggle */}
           <button

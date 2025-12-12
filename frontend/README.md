@@ -4,37 +4,45 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 
 ## Features
 - Ocean Professional theme with blue and amber accents
-- Header with logo/title, search, favorites filter, category pills, difficulty select, and theme toggle (light/dark)
+- Header with logo/title, search, language selector, favorites filter, category pills, difficulty select, and theme toggle (light/dark)
 - Responsive recipe grid with cards and ratings
-- Detail modal with image, ingredients, steps, reviews, and extra actions
+- Detail modal with image, ingredients, steps, reviews, translation toggle, and extra actions
 - Optional API integration; falls back to offline mock data
 - Client-side recipe management (add, edit, delete) with localStorage persistence
 - Admin section with Dashboard, Recipes management, and Approvals (fully client-side)
-- NEW: Shopping List and Weekly Meal Planning (client-side via localStorage)
-- NEW: Client-side Notifications (Web Notifications API with in-app toast fallback)
-- NEW: Community features (client-side): Comments, Likes/Share, Follow chefs, Chefs page, and Admin community analytics
+- Shopping List and Weekly Meal Planning (client-side via localStorage)
+- Client-side Notifications (Web Notifications API with in-app toast fallback)
+- Community features (client-side): Comments, Likes/Share, Follow chefs, Chefs page, and Admin community analytics
+- NEW: Multilingual client-only translations with caching and fallbacks
 
-## Notifications
+## Multilingual Support
 
-Client-side only, time-based while the tab is open:
-- Daily recipe suggestion (default 9:00 local, configurable)
-- Meal reminders (default 18:00 local, configurable)
-- New recipe added alerts (fires when an approved recipe appears)
+Client-side multilingual support is implemented without backend dependencies.
 
-How to use:
-1. Click the bell icon in the header to open Notification Settings.
-2. Click Request Permission to allow browser notifications (optional). If denied, you’ll see in-app toasts instead.
-3. Enable the toggles and set times (HH:MM 24-hour).
-4. Click Test Notification to verify delivery.
+- Languages: English (en), Hindi (hi), Telugu (te). Structure allows adding more (e.g., Bengali bn, Tamil ta).
+- Language selector: In the header and in the recipe detail modal. Persisted in localStorage with key `app_language` (default `en`).
+- Translation approach: Offline mock translator implemented in `src/data/i18n.js`.
+  - UI strings translated via a small in-browser dictionary.
+  - Recipe content (instructions/steps/description/ingredients) translated by a mock adapter that applies deterministic rules and wraps output with a language tag (e.g., `[hi] ...`).
+  - Translations are cached per recipe per language in `localStorage` (`app_translations`) to avoid repeated work.
+- Fallbacks: If a recipe lacks instructions/steps, no translation is attempted. Search and filters continue to operate on the original English content.
+- Accessibility: The modal shows a subtle “Translated from English” banner with a “View original” toggle; controls are keyboard accessible.
 
-Limitations:
-- Works only while the application tab is open (no service workers or push).
-- Scheduler runs roughly every 60 seconds; delivery can be up to 1 minute after the exact time.
-- To avoid spam, daily suggestion sends at most once per day, and meal reminder at most once per day.
+### Plugging in a real translation API later
 
-Accessibility:
-- In-app toasts are announced with role=status and are dismissible.
-- Browser notifications inherit system accessibility.
+The i18n module uses a pluggable translator interface. To integrate a real translation service:
+
+1. Create a new class (e.g., `RealTranslator`) that implements:
+   - `translate(text, targetLang): string`
+   - `translateArray(arr, targetLang): string[]`
+2. Replace the instantiated `translator` in `src/data/i18n.js` with `new RealTranslator(/* config */)`.
+3. Keep the local cache logic to reduce repeated calls.
+4. Do not store secrets in code; use environment variables via `.env` (ask ops for values and add them to `.env.example`).
+
+Note: This app is frontend-only; any external API calls should handle CORS and rate limits appropriately.
+
+### Analytics (Local-only)
+Each time a recipe is viewed in a non-English language, a lightweight counter is incremented in `localStorage` under `app_translation_stats`. The Admin Dashboard shows a simple bar chart for counts per language. This data is device-local only.
 
 ## Getting Started
 - `npm start` launches on http://localhost:3000 by default.
@@ -51,27 +59,10 @@ Accessibility:
 - `src/data/favorites.js` LocalStorage helpers for favorites
 - `src/data/admin.js` Lightweight hash router (no external libs)
 - `src/data/adminRecipes.js` Admin model helpers and analytics
-- NEW:
-  - `src/data/storage.js` localStorage helpers
-  - `src/data/shoppingList.js` shopping list model/helpers (`app_shopping_list`)
-  - `src/data/mealPlan.js` meal planning helpers (`app_meal_plan`)
-  - `src/components/ShoppingListPage.js` UI for shopping list
-  - `src/components/MealPlanPage.js` UI for weekly planning
-
-## Shopping List
-- Navigate to Shopping via the header or `/#/shopping`.
-- Add custom items (name, quantity, unit).
-- Mark items as purchased, edit inline, delete, and Clear purchased.
-- From a recipe modal, click “Add ingredients to shopping list” to add normalized ingredients.
-- Stored in `localStorage` under key `app_shopping_list`.
-
-## Weekly Meal Planning
-- Navigate to Planning via the header or `/#/plan`.
-- See a 7-day week (Mon–Sun). Use Previous/Next to move weeks (week start Monday in ISO yyyy-mm-dd).
-- Add recipes to each day from the searchable picker of approved recipes.
-- Remove recipes from a day or clear a day.
-- Add a selected day’s or the entire week’s ingredients to your shopping list (merged/normalized).
-- Stored in `localStorage` under key `app_meal_plan`.
+- `src/data/storage.js` localStorage helpers
+- `src/data/shoppingList.js` shopping list model/helpers (`app_shopping_list`)
+- `src/data/mealPlan.js` meal planning helpers (`app_meal_plan`)
+- `src/data/i18n.js` client-side multilingual helpers, cache, and translator interface
 
 ## Accessibility & Modals
 - Modals (RecipeForm, ConfirmDialog, DetailModal) prevent background scroll while open using a body lock class and are internally scrollable.
@@ -95,6 +86,5 @@ Privacy:
 - Clearing browser storage will remove your community data.
 
 Admin:
-- Dashboard shows total comments, total likes, top 5 most-liked recipes, and most-followed chefs.
+- Dashboard shows total comments, total likes, top 5 most-liked recipes, most-followed chefs, and local translation view counts.
 - Recipes table includes Likes and Comments columns.
-
