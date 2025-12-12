@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
  * RecipeDetailModal renders selected recipe details in a modal.
  * PUBLIC_INTERFACE
  */
-const RecipeDetailModal = ({ recipe, onClose }) => {
+const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggleFavorite = () => {} }) => {
   useEffect(() => {
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
     if (recipe) {
@@ -15,12 +15,25 @@ const RecipeDetailModal = ({ recipe, onClose }) => {
 
   if (!recipe) return null;
 
+  const fav = isFavorite(recipe.id);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Recipe details for ${recipe.title}`} onClick={onClose}>
       <div className="modal" onClick={(e)=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{recipe.title}</div>
-          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
+              title={fav ? 'Remove from favorites' : 'Add to favorites'}
+              onClick={() => onToggleFavorite(recipe.id)}
+              className="theme-toggle"
+              style={{ padding: '6px 10px' }}
+            >
+              {fav ? '❤️ Favorited' : '🤍 Favorite'}
+            </button>
+            <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+          </div>
         </div>
         <div className="modal-body">
           <img

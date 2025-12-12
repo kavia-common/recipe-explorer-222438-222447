@@ -6,12 +6,13 @@ import { mockRecipes } from './data/mock';
 import RecipeGrid from './components/RecipeGrid';
 import RecipeDetailModal from './components/RecipeDetailModal';
 import Header from './components/Header';
+import { getFavoriteIds, toggleFavorite } from './data/favorites';
 
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
- * - Header: logo/title + search
- * - Content: recipe grid
- * - Detail: modal view for selected recipe
+ * - Header: logo/title + search + favorites filter
+ * - Content: recipe grid with favorite hearts
+ * - Detail: modal view for selected recipe with heart
  */
 function App() {
   const [theme, setTheme] = useState('light');
@@ -20,6 +21,8 @@ function App() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [favoriteIds, setFavoriteIdsState] = useState(() => getFavoriteIds());
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
   // Apply theme to document
   useEffect(() => {
@@ -60,10 +63,26 @@ function App() {
     };
   }, []);
 
+  // Keep favorites state in sync if storage changes (multi-tab)
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key && e.key.startsWith('favoriteRecipeIds')) {
+        setFavoriteIdsState(getFavoriteIds());
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return recipes;
-    return recipes.filter(r => {
+    let base = recipes;
+    if (showOnlyFavorites) {
+      const favSet = new Set(favoriteIds);
+      base = recipes.filter((r) => favSet.has(r.id));
+    }
+    if (!q) return base;
+    return base.filter(r => {
       const hay = [
         r.title,
         r.description,
@@ -72,10 +91,19 @@ function App() {
       ].join(' ').toLowerCase();
       return hay.includes(q);
     });
-  }, [recipes, query]);
+  }, [recipes, query, favoriteIds, showOnlyFavorites]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+
+  // PUBLIC_INTERFACE
+  const onToggleFavorite = (id) => {
+    const next = toggleFavorite(id);
+    setFavoriteIdsState(next);
+  };
+
+  // PUBLIC_INTERFACE
+  const isFav = (id) => favoriteIds.includes(id);
 
   return (
     <div className="app-root">
@@ -84,6 +112,9 @@ function App() {
         onToggleTheme={toggleTheme}
         query={query}
         onQueryChange={setQuery}
+        showOnlyFavorites={showOnlyFavorites}
+        onToggleFavoritesFilter={() => setShowOnlyFavorites(v => !v)}
+        favoritesCount={favoriteIds.length}
       />
       <main className="container">
         {err && <div role="alert" className="alert alert-warn">{err}</div>}
@@ -94,12 +125,19 @@ function App() {
             ))}
           </div>
         ) : (
-          <RecipeGrid items={filtered} onSelect={setSelected} />
+          <RecipeGrid
+            items={filtered}
+            onSelect={setSelected}
+            isFavorite={isFav}
+            onToggleFavorite={onToggleFavorite}
+          />
         )}
       </main>
       <RecipeDetailModal
         recipe={selected}
         onClose={() => setSelected(null)}
+        isFavorite={isFav}
+        onToggleFavorite={onToggleFavorite}
       />
       <footer className="footer">
         <span>Recipe Explorer</span>

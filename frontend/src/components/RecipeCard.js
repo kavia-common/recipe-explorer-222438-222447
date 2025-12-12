@@ -4,12 +4,43 @@ import React from 'react';
  * RecipeCard shows a single recipe preview.
  * Props:
  * - recipe: { id, title, image, description, tags }
- * - onClick: function
+ * - onClick: function (card click)
+ * - isFavorite?: (id) => boolean
+ * - onToggleFavorite?: (id) => void
  */
-const RecipeCard = ({ recipe, onClick }) => {
+const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {} }) => {
   const { title, image, description, tags = [] } = recipe;
+  const fav = isFavorite(recipe.id);
+
   return (
-    <article className="card" role="listitem" onClick={onClick} tabIndex={0} onKeyDown={(e)=>{ if(e.key==='Enter'){ onClick(); }}}>
+    <article
+      className="card"
+      role="listitem"
+      onClick={onClick}
+      tabIndex={0}
+      onKeyDown={(e)=>{ if(e.key==='Enter'){ onClick(); }}}
+      style={{ position: 'relative' }}
+    >
+      <button
+        aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
+        title={fav ? 'Remove from favorites' : 'Add to favorites'}
+        onClick={(e) => { e.stopPropagation(); onToggleFavorite(recipe.id); }}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          zIndex: 1,
+          border: '1px solid var(--ocean-border)',
+          background: 'var(--ocean-surface)',
+          color: fav ? 'var(--ocean-primary)' : 'var(--ocean-text)',
+          padding: '6px 10px',
+          borderRadius: 999,
+          cursor: 'pointer',
+          boxShadow: 'var(--ocean-shadow)'
+        }}
+      >
+        {fav ? '❤️' : '🤍'}
+      </button>
       <img
         className="card-img"
         src={image}

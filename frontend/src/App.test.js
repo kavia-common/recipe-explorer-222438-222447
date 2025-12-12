@@ -6,3 +6,9 @@ test('renders header title', () => {
   const title = screen.getByText(/Recipe Explorer/i);
   expect(title).toBeInTheDocument();
 });
+
+test('renders Favorites toggle in header', () => {
+  render(<App />);
+  const favButton = screen.getByRole('button', { name: /favorites/i });
+  expect(favButton).toBeInTheDocument();
+});
