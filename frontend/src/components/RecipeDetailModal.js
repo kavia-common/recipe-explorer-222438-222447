@@ -4,14 +4,21 @@ import { getOrCreateUser, getReviewsForRecipe, getRatingSummary, upsertMyReview,
 /**
  * RecipeDetailModal renders selected recipe details in a modal.
  * PUBLIC_INTERFACE
+ * @param {{ key:string, label:string, onClick:() => void }[]} [extraActions]
  */
-const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
-  // Always call hooks in the same order. Guard internals with safe fallbacks.
+const RecipeDetailModal = ({
+  recipe,
+  onClose,
+  isFavorite = () => false,
+  onToggleFavorite = () => {},
+  onEdit = () => {},
+  onDelete = () => {},
+  extraActions = [],
+}) => {
   const rec = recipe || {};
   const recipeId = rec.id;
 
   useEffect(() => {
-    // Only attach listeners when a recipe is open
     if (!recipe) return;
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onEsc);
@@ -48,7 +55,6 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
   }, [myReview?.id]);
 
   useEffect(() => {
-    // When recipe changes, load its reviews
     if (recipe) {
       setReviews(getReviewsForRecipe(recipe.id));
       setShowCount(5);
@@ -82,7 +88,6 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
   };
 
   const StarInput = ({ value, onChange }) => {
-    // accessible star selector 1..5
     const stars = [1,2,3,4,5];
     return (
       <div role="group" aria-label="Rating" style={{ display: 'flex', gap: 6 }}>
@@ -147,7 +152,7 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
               className="theme-toggle"
               style={{ padding: '6px 10px' }}
             >
-              {fav ? '❤️ Favorited' : '🤍 Favorite'}
+              {fav ? '❤️ Favorited' : '💝 Favorite'}
             </button>
             <button
               className="theme-toggle"
@@ -167,6 +172,11 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
             >
               🗑️ Delete
             </button>
+            {extraActions.length > 0 && extraActions.map((a) => (
+              <button key={a.key} className="theme-toggle" onClick={a.onClick} style={{ padding: '6px 10px', background: 'rgba(37,99,235,0.10)' }}>
+                {a.label}
+              </button>
+            ))}
             <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
@@ -177,7 +187,6 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
             alt={recipe.title || 'Recipe image'}
             onError={(e) => { e.currentTarget.src = `https://source.unsplash.com/featured/800x400?recipe,food&sig=${recipe.id}`; }}
           />
-          {/* Category chip */}
           {recipe.category && (
             <div className="taglist" style={{ marginTop: 8, marginBottom: 8 }}>
               <span
@@ -200,7 +209,7 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
               <div className="section-title">Ingredients</div>
               <ul className="list">
                 {recipe.ingredients.map((ing, i) => (
-                  <li key={i}>{ing}</li>
+                  <li key={i}>{typeof ing === 'string' ? ing : String(ing)}</li>
                 ))}
               </ul>
             </>

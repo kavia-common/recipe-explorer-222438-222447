@@ -4,12 +4,13 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 
 ## Features
 - Ocean Professional theme with blue and amber accents
-- Header with logo/title, search, and theme toggle (light/dark)
-- Responsive recipe grid with cards
-- Detail modal with image, ingredients, and steps
+- Header with logo/title, search, favorites filter, category pills, difficulty select, and theme toggle (light/dark)
+- Responsive recipe grid with cards and ratings
+- Detail modal with image, ingredients, steps, reviews, and extra actions
 - Optional API integration; falls back to offline mock data
 - Client-side recipe management (add, edit, delete) with localStorage persistence
 - Admin section with Dashboard, Recipes management, and Approvals (fully client-side)
+- NEW: Shopping List and Weekly Meal Planning (client-side via localStorage)
 
 ## Getting Started
 - `npm start` launches on http://localhost:3000 by default.
@@ -26,40 +27,27 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 - `src/data/favorites.js` LocalStorage helpers for favorites
 - `src/data/admin.js` Lightweight hash router (no external libs)
 - `src/data/adminRecipes.js` Admin model helpers and analytics
+- NEW:
+  - `src/data/storage.js` localStorage helpers
+  - `src/data/shoppingList.js` shopping list model/helpers (`app_shopping_list`)
+  - `src/data/mealPlan.js` meal planning helpers (`app_meal_plan`)
+  - `src/components/ShoppingListPage.js` UI for shopping list
+  - `src/components/MealPlanPage.js` UI for weekly planning
 
-## Notes
-- Port 3000 is used as per environment preview.
-- No external UI frameworks; pure CSS with subtle shadows and rounded corners.
+## Shopping List
+- Navigate to Shopping via the header or `/#/shopping`.
+- Add custom items (name, quantity, unit).
+- Mark items as purchased, edit inline, delete, and Clear purchased.
+- From a recipe modal, click “Add ingredients to shopping list” to add normalized ingredients.
+- Stored in `localStorage` under key `app_shopping_list`.
 
-## Recipe Management
-- Click "➕ Add Recipe" in the header to create a new recipe. Category is required (Veg, Non-Veg, Desserts, Drinks; Veg by default).
-- In the main (non-admin) UI, newly added recipes are saved as status: `pending` (not visible to the main feed until approved).
-- Edit or Delete an existing recipe via:
-  - The recipe card overflow menu (⋯) on each card, or
-  - The recipe detail modal (✏️ Edit / 🗑️ Delete).
-- All changes are stored locally in your browser (localStorage key: `app_recipes:v1`). These local recipes are merged with API/mock data on load; local items override by id.
-- Favorites are preserved when editing (same id). Deleting a recipe removes it from favorites if needed.
-
-## Admin
-- Access the Admin section from the header "🛠️ Admin" button or by navigating to `/#/admin` (Dashboard), `/#/admin/recipes`, or `/#/admin/approvals`.
-- Navigation tabs: Dashboard | Recipes | Approvals
-- Data model extensions stored in localStorage:
-  - `status`: `approved` | `pending` (main feed shows approved only)
-  - `source`: `mock` | `user`
-  - `createdAt`, `updatedAt` (ISO strings)
-  - `submittedBy` (defaults to `"user"`)
-- Approvals:
-  - Pending recipes appear under Approvals.
-  - Approve sets `status: approved` (becomes visible in main feed).
-  - Reject deletes the recipe and cleans up favorites if it was favorited.
-- Admin Recipes:
-  - List all recipes (any status).
-  - View, Edit, Delete. Admin Add/Edit allows setting `status` before saving.
-- Dashboard:
-  - Totals and approved vs pending counts.
-  - Category distribution (Veg, Non-Veg, Desserts, Drinks).
-  - Favorites count total and top 5 favorited recipes.
-  - Recently added (last 5 by createdAt).
+## Weekly Meal Planning
+- Navigate to Planning via the header or `/#/plan`.
+- See a 7-day week (Mon–Sun). Use Previous/Next to move weeks (week start Monday in ISO yyyy-mm-dd).
+- Add recipes to each day from the searchable picker of approved recipes.
+- Remove recipes from a day or clear a day.
+- Add a selected day’s or the entire week’s ingredients to your shopping list (merged/normalized).
+- Stored in `localStorage` under key `app_meal_plan`.
 
 ## Accessibility & Modals
 - Modals (RecipeForm, ConfirmDialog, DetailModal) prevent background scroll while open using a body lock class and are internally scrollable.

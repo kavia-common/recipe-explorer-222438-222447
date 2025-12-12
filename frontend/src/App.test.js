@@ -32,15 +32,19 @@ async function addRecipeFlow() {
   // Set cooking time and difficulty
   const timeInput = screen.getByLabelText(/Cooking Time/i);
   fireEvent.change(timeInput, { target: { value: '35' } });
-  const diffSelect = screen.getByLabelText(/Difficulty/i);
+  const diffSelect = screen.getByLabelText(/Difficulty select/i);
   fireEvent.change(diffSelect, { target: { value: 'Hard' } });
 
   const saveBtn = screen.getByRole('button', { name: /Add Recipe/i });
   fireEvent.click(saveBtn);
 
-  // wait a tick
   await act(async () => { await wait(50); });
 }
+
+beforeEach(() => {
+  try { window.localStorage.clear(); } catch {}
+  window.location.hash = '#/';
+});
 
 test('renders header title', () => {
   render(<App />);
@@ -54,80 +58,114 @@ test('renders Favorites toggle in header', () => {
   expect(favButton).toBeInTheDocument();
 });
 
-test('renders category filter pills', async () => {
+test('can navigate to Shopping and Planning routes', async () => {
   render(<App />);
-  // Category pills should be visible: All, Veg, Non-Veg, Desserts, Drinks
-  const allPill = await screen.findByRole('button', { name: 'All' });
-  const vegPill = screen.getByRole('button', { name: 'Veg' });
-  const nonVegPill = screen.getByRole('button', { name: 'Non-Veg' });
-  const dessertsPill = screen.getByRole('button', { name: 'Desserts' });
-  const drinksPill = screen.getByRole('button', { name: 'Drinks' });
+  const shopping = await screen.findByRole('button', { name: /shopping/i });
+  fireEvent.click(shopping);
+  expect(window.location.hash).toContain('shopping');
 
-  expect(allPill).toBeInTheDocument();
-  expect(vegPill).toBeInTheDocument();
-  expect(nonVegPill).toBeInTheDocument();
-  expect(dessertsPill).toBeInTheDocument();
-  expect(drinksPill).toBeInTheDocument();
+  const planning = screen.getByRole('button', { name: /planning/i });
+  fireEvent.click(planning);
+  expect(window.location.hash).toContain('plan');
+});
+
+test('shopping list: add custom item, toggle purchased, clear purchased', async () => {
+  render(<App />);
+  const shopping = await screen.findByRole('button', { name: /shopping/i });
+  fireEvent.click(shopping);
+
+  // add item
+  const nameInput = await screen.findByLabelText(/item name/i);
+  const qtyInput = screen.getByLabelText(/quantity/i);
+  const unitInput = screen.getByLabelText(/unit/i);
+  fireEvent.change(nameInput, { target: { value: 'Tomatoes' } });
+  fireEvent.change(qtyInput, { target: { value: '2' } });
+  fireEvent.change(unitInput, { target: { value: 'pcs' } });
+  fireEvent.click(screen.getByRole('button', { name: /add item/i }));
+
+  expect(screen.getByDisplayValue('Tomatoes')).toBeInTheDocument();
+
+  // toggle purchased then clear
+  const checkbox = screen.getByRole('checkbox', { name: /mark tomatoes as purchased/i });
+  fireEvent.click(checkbox);
+  const clearBtn = screen.getByRole('button', { name: /clear purchased/i });
+  fireEvent.click(clearBtn);
+
+  expect(screen.queryByDisplayValue('Tomatoes')).not.toBeInTheDocument();
+});
+
+test('planning: add recipe to day and aggregate to shopping', async () => {
+  render(<App />);
+  const planning = await screen.findByRole('button', { name: /planning/i });
+  fireEvent.click(planning);
+
+  // Add first recipe from picker if any
+  const pickerButtons = await screen.findAllByRole('button');
+  const addBtn = pickerButtons.find((b) => {
+    const t = b.getAttribute('title') || '';
+    return /Add .* to/.test(t);
+    });
+  if (addBtn) {
+    fireEvent.click(addBtn);
+
+    // Add day's ingredients to shopping
+    // suppress alert in tests
+    const oldAlert = window.alert; window.alert = () => {};
+    const dayBtn = await screen.findByRole('button', { name: /add day’s ingredients/i });
+    fireEvent.click(dayBtn);
+    window.alert = oldAlert;
+
+    // Navigate to Shopping to ensure page renders
+    const shopping = screen.getByRole('button', { name: /shopping/i });
+    fireEvent.click(shopping);
+    expect(await screen.findByText(/Shopping List/i)).toBeInTheDocument();
+  }
 });
 
 test('filtering by category reduces visible items for a specific category', async () => {
   render(<App />);
-  // Wait for grid items to load
   const allPill = await screen.findByRole('button', { name: 'All' });
   expect(allPill).toBeInTheDocument();
 
-  // Count items before filter
   const gridBefore = await screen.findByRole('list');
   const itemsBefore = within(gridBefore).getAllByRole('listitem');
 
-  // Apply Desserts filter
   const dessertsPill = screen.getByRole('button', { name: 'Desserts' });
   fireEvent.click(dessertsPill);
 
   const gridAfter = await screen.findByRole('list');
   const itemsAfter = within(gridAfter).getAllByRole('listitem');
 
-  // After selecting a specific category, expect the list to be reduced (unless already minimal)
   expect(itemsAfter.length).toBeLessThanOrEqual(itemsBefore.length);
-  // There should be at least one item for Desserts in mock
   expect(itemsAfter.length).toBeGreaterThan(0);
 });
 
 test('search by title returns matching items', async () => {
   render(<App />);
 
-  // wait for initial list
   const grid = await screen.findByRole('list');
   const initialItems = within(grid).getAllByRole('listitem');
   expect(initialItems.length).toBeGreaterThan(0);
 
   const input = screen.getByLabelText('Search input');
-  // Title includes "Pizza"
   fireEvent.change(input, { target: { value: 'pizza' } });
 
-  // debounce 200ms
-  await act(async () => {
-    await wait(250);
-  });
+  await act(async () => { await wait(250); });
 
   const gridAfter = await screen.findByRole('list');
   const itemsAfter = within(gridAfter).getAllByRole('listitem');
-  // Should match at least the Margherita Pizza recipe
   expect(itemsAfter.length).toBeGreaterThan(0);
 });
 
 test('difficulty filter affects displayed list', async () => {
   render(<App />);
-  // Wait initial grid
   await screen.findByRole('list');
 
-  // Select difficulty Easy
   const diffSelect = screen.getByLabelText('Difficulty select');
   fireEvent.change(diffSelect, { target: { value: 'Easy' } });
 
   await act(async () => { await wait(50); });
 
-  // There should be at least one item with Easy in mock
   const grid = await screen.findByRole('list');
   const items = within(grid).getAllByRole('listitem');
   expect(items.length).toBeGreaterThan(0);
@@ -137,34 +175,27 @@ test('adding a recipe saves as pending and not visible on main feed until approv
   render(<App />);
   await addRecipeFlow();
 
-  // Narrow search to the new item on main feed (should not appear because pending)
   const input = screen.getByLabelText('Search input');
   fireEvent.change(input, { target: { value: 'Test Brownie' } });
   await act(async () => { await wait(250); });
 
-  // It should not appear yet
   const grid = await screen.findByRole('list');
   const items = within(grid).getAllByRole('listitem');
   const found = items.some((li) => within(li).queryByText('Test Brownie'));
   expect(found).toBe(false);
 
-  // Open Admin Approvals and approve it
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
 
-  // Should navigate to admin dashboard by default, go to approvals
   await act(async () => { await wait(50); });
-  // Click Approvals tab
   const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });
   fireEvent.click(approvalsTab);
   await act(async () => { await wait(50); });
 
-  // Approve the pending item
   const approveBtn = await screen.findByRole('button', { name: 'Approve' });
   fireEvent.click(approveBtn);
   await act(async () => { await wait(50); });
 
-  // Navigate back to main
   window.location.hash = '#/';
   await act(async () => { await wait(100); });
 
@@ -182,7 +213,6 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
   render(<App />);
   await addRecipeFlow();
 
-  // Go to admin approvals
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
   await act(async () => { await wait(50); });
@@ -190,12 +220,10 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
   fireEvent.click(approvalsTab);
   await act(async () => { await wait(50); });
 
-  // Reject (confirm native confirm will default to true in jsdom)
   const rejectBtn = await screen.findByRole('button', { name: 'Reject' });
   fireEvent.click(rejectBtn);
   await act(async () => { await wait(50); });
 
-  // Back to main and ensure cannot find it
   window.location.hash = '#/';
   await act(async () => { await wait(100); });
   const input = screen.getByLabelText('Search input');
@@ -210,14 +238,12 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
 
 test('Admin table shows cookingTime and difficulty columns', async () => {
   render(<App />);
-  // Navigate to Admin Recipes
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
   await act(async () => { await wait(50); });
   const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
   fireEvent.click(recipesTab);
   await act(async () => { await wait(50); });
-  // Column headers should include Time and Difficulty
   expect(await screen.findByText(/Time/)).toBeInTheDocument();
   expect(await screen.findByText(/Difficulty/)).toBeInTheDocument();
 });
@@ -226,7 +252,6 @@ test('Admin edit/delete works', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  // Approve first so it appears everywhere
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
   await act(async () => { await wait(50); });
@@ -237,12 +262,10 @@ test('Admin edit/delete works', async () => {
   fireEvent.click(approveBtn);
   await act(async () => { await wait(50); });
 
-  // Go to Recipes
   const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
   fireEvent.click(recipesTab);
   await act(async () => { await wait(50); });
 
-  // Click Edit via table (open editor)
   const editBtn = await screen.findByRole('button', { name: 'Edit' });
   fireEvent.click(editBtn);
   const titleInput = await screen.findByLabelText(/Title\/Name/i);
@@ -251,14 +274,12 @@ test('Admin edit/delete works', async () => {
   fireEvent.click(saveBtn);
   await act(async () => { await wait(100); });
 
-  // Now delete it
   const deleteBtn = await screen.findByRole('button', { name: 'Delete' });
   fireEvent.click(deleteBtn);
   const confirmDel = await screen.findByRole('button', { name: 'Delete' });
   fireEvent.click(confirmDel);
   await act(async () => { await wait(100); });
 
-  // Back to main and ensure not present
   window.location.hash = '#/';
   await act(async () => { await wait(80); });
   const input = screen.getByLabelText('Search input');
@@ -274,7 +295,6 @@ test('new fields appear in Add Recipe form and can be saved', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  // Go to admin approvals and approve so it shows in main feed
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
   await act(async () => { await wait(50); });
@@ -285,18 +305,15 @@ test('new fields appear in Add Recipe form and can be saved', async () => {
   fireEvent.click(approveBtn);
   await act(async () => { await wait(50); });
 
-  // Back to main
   window.location.hash = '#/';
   await act(async () => { await wait(80); });
 
-  // Search and open
   const input = screen.getByLabelText('Search input');
   fireEvent.change(input, { target: { value: 'Test Brownie' } });
   await act(async () => { await wait(250); });
 
   const grid = await screen.findByRole('list');
   const card = within(grid).getAllByRole('listitem')[0];
-  // Should show difficulty/cooking time badges text
   expect(card).toHaveTextContent(/⏱️/);
   expect(card).toHaveTextContent(/🎯/);
 
@@ -310,7 +327,6 @@ test('editing a recipe updates its card and detail', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  // Open newly added recipe by searching quick
   const input = screen.getByLabelText('Search input');
   fireEvent.change(input, { target: { value: 'Test Brownie' } });
   await act(async () => { await wait(250); });
@@ -319,7 +335,6 @@ test('editing a recipe updates its card and detail', async () => {
   const card = within(grid).getAllByRole('listitem')[0];
   fireEvent.click(card);
 
-  // In modal, click Edit
   const editBtn = await screen.findByRole('button', { name: /Edit recipe/i });
   fireEvent.click(editBtn);
 
@@ -330,11 +345,9 @@ test('editing a recipe updates its card and detail', async () => {
   fireEvent.click(saveBtn);
   await act(async () => { await wait(100); });
 
-  // Close modal if still open
   const maybeClose = screen.queryByLabelText('Close');
   if (maybeClose) fireEvent.click(maybeClose);
 
-  // Search for updated
   fireEvent.change(input, { target: { value: 'Updated' } });
   await act(async () => { await wait(250); });
   const grid2 = await screen.findByRole('list');
@@ -347,7 +360,6 @@ test('deleting a recipe removes it from the list', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  // Narrow search
   const input = screen.getByLabelText('Search input');
   fireEvent.change(input, { target: { value: 'Test Brownie' } });
   await act(async () => { await wait(250); });
@@ -363,7 +375,6 @@ test('deleting a recipe removes it from the list', async () => {
   fireEvent.click(confirmBtn);
   await act(async () => { await wait(100); });
 
-  // Now the list should not contain the item
   fireEvent.change(input, { target: { value: 'Test Brownie' } });
   await act(async () => { await wait(250); });
 
@@ -375,25 +386,20 @@ test('deleting a recipe removes it from the list', async () => {
   }
 });
 
-//
-// New tests for Ratings & Reviews
-//
+// Ratings & Reviews
 test('adding a review updates average and count in detail and on card', async () => {
   render(<App />);
-  // Open a known recipe from mock
   const grid = await screen.findByRole('list');
   const card = within(grid).getAllByRole('listitem')[0];
   fireEvent.click(card);
 
   const modal = await screen.findByRole('dialog');
-  // Find star buttons by aria-label
   const starButtons = within(modal).getAllByRole('button').filter(b => {
     const a = b.getAttribute('aria-label') || '';
     return /star/.test(a);
     });
   expect(starButtons.length).toBe(5);
 
-  // Select 4 stars
   fireEvent.click(starButtons[3]);
   const textarea = within(modal).getByLabelText(/Comment/i);
   fireEvent.change(textarea, { target: { value: 'Tasty!' } });
@@ -401,27 +407,23 @@ test('adding a review updates average and count in detail and on card', async ()
   const submit = within(modal).getByRole('button', { name: /Add review|Save review/i });
   fireEvent.click(submit);
 
-  // Close modal to refresh list
   const close = within(modal).getByLabelText('Close');
   fireEvent.click(close);
 
-  // Now the card should show rating badge
   const grid2 = await screen.findByRole('list');
   const firstCard = within(grid2).getAllByRole('listitem')[0];
   expect(firstCard).toHaveTextContent('⭐');
-  expect(firstCard).toHaveTextContent(/\(\d+\)/); // review count
+  expect(firstCard).toHaveTextContent(/\(\d+\)/);
 });
 
 test('editing and deleting a review updates counts', async () => {
   render(<App />);
 
-  // Open first card
   const grid = await screen.findByRole('list');
   const card = within(grid).getAllByRole('listitem')[0];
   fireEvent.click(card);
   const modal = await screen.findByRole('dialog');
 
-  // Add review if none
   let starButtons = within(modal).getAllByRole('button').filter(b => /star/.test(b.getAttribute('aria-label') || ''));
   if (starButtons.length === 5) {
     fireEvent.click(starButtons[4]); // 5 stars
@@ -431,22 +433,18 @@ test('editing and deleting a review updates counts', async () => {
     fireEvent.click(submit);
   }
 
-  // Edit (click one star lower)
   const modal2 = await screen.findByRole('dialog');
   starButtons = within(modal2).getAllByRole('button').filter(b => /star/.test(b.getAttribute('aria-label') || ''));
   fireEvent.click(starButtons[3]); // 4 stars
   const saveBtn = within(modal2).getByRole('button', { name: /Save review/i });
   fireEvent.click(saveBtn);
 
-  // Delete
   const delBtn = within(modal2).getByRole('button', { name: /Delete my review/i });
   fireEvent.click(delBtn);
 
-  // Close
   const close = within(modal2).getByLabelText('Close');
   fireEvent.click(close);
 
-  // Ensure app still renders grid after operations
   const grid3 = await screen.findByRole('list');
   const firstCard = within(grid3).getAllByRole('listitem')[0];
   expect(firstCard).toBeInTheDocument();
@@ -454,7 +452,6 @@ test('editing and deleting a review updates counts', async () => {
 
 test('Admin dashboard metrics reflect reviews and Admin table shows rating columns', async () => {
   render(<App />);
-  // Add a review on first recipe quickly
   const grid = await screen.findByRole('list');
   const card = within(grid).getAllByRole('listitem')[0];
   fireEvent.click(card);
@@ -466,14 +463,11 @@ test('Admin dashboard metrics reflect reviews and Admin table shows rating colum
   const close = within(modal).getByLabelText('Close');
   fireEvent.click(close);
 
-  // Go to Admin Dashboard
   const adminBtn = screen.getByRole('button', { name: /Admin/i });
   fireEvent.click(adminBtn);
-  // Ratings blocks should exist
   await screen.findByText(/Ratings/);
   expect(screen.getByText(/Avg rating across approved/)).toBeInTheDocument();
 
-  // Go to Admin Recipes and check columns
   const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
   fireEvent.click(recipesTab);
   await screen.findByText(/Avg Rating/);

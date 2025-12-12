@@ -2,7 +2,7 @@ import React from 'react';
 import { navigateTo } from '../data/admin';
 
 /**
- * Header with brand, search input, category filter, favorites filter, and theme toggle.
+ * Header with brand, search input, category filter, favorites filter, theme toggle, and nav.
  * Props:
  * - theme: 'light' | 'dark'
  * - onToggleTheme: function to toggle theme
@@ -51,10 +51,20 @@ const Header = ({
     </button>
   );
 
+  const go = (path) => navigateTo(path);
+
   return (
     <header className="header">
       <div className="header-inner">
-        <div className="brand" aria-label="Recipe Explorer">
+        <div
+          className="brand"
+          aria-label="Recipe Explorer"
+          role="link"
+          tabIndex={0}
+          onClick={() => go('/')}
+          onKeyDown={(e) => e.key === 'Enter' && go('/')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="logo" aria-hidden>Rx</div>
           <div>
             <div className="title">Recipe Explorer</div>
@@ -73,6 +83,22 @@ const Header = ({
         </label>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Primary navigation */}
+          <nav aria-label="Primary" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button className="theme-toggle" onClick={() => go('/')} title="Home">Home</button>
+            <button className="theme-toggle" onClick={() => go('/shopping')} title="Shopping">Shopping</button>
+            <button className="theme-toggle" onClick={() => go('/plan')} title="Planning">Planning</button>
+            <button
+              className="theme-toggle"
+              onClick={onAddRecipe}
+              aria-label="Add Recipe"
+              title="Add Recipe"
+              style={{ background: 'rgba(37,99,235,0.10)' }}
+            >
+              ➕ Add Recipe
+            </button>
+          </nav>
+
           {/* Category selector - pills on wide screens */}
           <div aria-label="Category filter" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {categoryOptions.map((opt) => (
@@ -105,24 +131,7 @@ const Header = ({
             </select>
           </div>
 
-          {/* Fallback compact select for extremely small screens (kept for a11y; visually still usable) */}
-          <select
-            aria-label="Category select"
-            value={category}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            style={{
-              display: 'none',
-              border: '1px solid var(--ocean-border)',
-              background: 'var(--ocean-surface)',
-              color: 'var(--ocean-text)',
-              padding: '8px 12px',
-              borderRadius: 999,
-              boxShadow: 'var(--ocean-shadow)',
-            }}
-          >
-            {categoryOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-
+          {/* Favorites */}
           <button
             className="theme-toggle"
             onClick={onToggleFavoritesFilter}
@@ -137,16 +146,7 @@ const Header = ({
             <span aria-hidden>❤️</span> Favorites{favoritesCount ? ` (${favoritesCount})` : ''}
           </button>
 
-          <button
-            className="theme-toggle"
-            onClick={onAddRecipe}
-            aria-label="Add Recipe"
-            title="Add Recipe"
-            style={{ background: 'rgba(37,99,235,0.10)' }}
-          >
-            ➕ Add Recipe
-          </button>
-
+          {/* Admin */}
           <button
             className="theme-toggle"
             onClick={() => navigateTo('/admin/dashboard')}
@@ -157,6 +157,7 @@ const Header = ({
             🛠️ Admin
           </button>
 
+          {/* Theme toggle */}
           <button
             className="theme-toggle"
             onClick={onToggleTheme}
