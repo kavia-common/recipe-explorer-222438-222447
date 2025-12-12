@@ -67,28 +67,35 @@ function App() {
       setLoading(true);
       setErr('');
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_BACKEND_URL || '';
-        const useApi = Boolean(apiBase);
+        const apiBaseEnv = process.env.REACT_APP_API_BASE || process.env.REACT_APP_BACKEND_URL || '';
         let data = [];
-        if (useApi) {
-          data = await fetchRecipes(apiBase);
+        if (apiBaseEnv) {
+          // Try API; if it fails for network or response reasons, fall back to mock and show a mild notice.
+          try {
+            data = await fetchRecipes(apiBaseEnv);
+          } catch (apiErr) {
+            // Only show an alert if a usable API base was provided but the call failed.
+            // If base is invalid, message is still a gentle info and we continue with mock.
+            data = mockRecipes;
+            if (!cancelled) {
+              setErr('Failed to load from API. Showing offline data.');
+            }
+          }
         } else {
-          // fallback to mock
+          // No API configured -> use mock quietly (no warning)
           data = mockRecipes;
         }
+
         if (!cancelled) {
           const arr = Array.isArray(data) ? data : [];
           // ensure category field exists
           const withCat = arr.map((r) => ({ ...r, category: normalizeCategory(r) }));
           setRecipes(withCat);
         }
-      } catch (e) {
+      } catch {
+        // Any unexpected error -> fallback to mock silently; keep UI responsive
         if (!cancelled) {
-          setErr('Failed to load recipes. Showing offline data.');
-          const withCat = mockRecipes.map((r) => ({
-            ...r,
-            category: r.category || 'Veg',
-          }));
+          const withCat = mockRecipes.map((r) => ({ ...r, category: r.category || 'Veg' }));
           setRecipes(withCat);
         }
       } finally {
