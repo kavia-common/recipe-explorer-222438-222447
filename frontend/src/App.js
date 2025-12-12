@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './index.css';
 import { fetchRecipes } from './data/api';
@@ -21,6 +21,9 @@ function App() {
   const [theme, setTheme] = useState('light');
   const [recipes, setRecipes] = useState([]);
   const [query, setQuery] = useState('');
+  // Keep a debounced value to avoid excessive re-renders when typing
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const debounceTimerRef = useRef(null);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -47,6 +50,19 @@ function App() {
       // ignore storage errors
     }
   }, [category]);
+
+  // Debounce search query updates (200ms)
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 200);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [query]);
 
   // Load recipes from API if configured; otherwise fallback to mock
   useEffect(() => {
@@ -88,15 +104,63 @@ function App() {
 
         if (!cancelled) {
           const arr = Array.isArray(data) ? data : [];
-          // ensure category field exists
-          const withCat = arr.map((r) => ({ ...r, category: normalizeCategory(r) }));
-          setRecipes(withCat);
+          // ensure category and ingredients fields exist/normalized
+          const normalized = arr.map((r) => {
+            // Normalize ingredients: allow string or array, store as array of strings for UI, and a joined string for searching
+            const ingRaw = r.ingredients;
+            let ingredientsArray = [];
+            if (Array.isArray(ingRaw)) {
+              ingredientsArray = ingRaw.map((x) => String(x));
+            } else if (typeof ingRaw === 'string') {
+              // Split on commas as a simple heuristic, fallback to full string if no comma present
+              const parts = ingRaw.includes(',') ? ingRaw.split(',') : [ingRaw];
+              ingredientsArray = parts.map((p) => p.trim()).filter(Boolean);
+            } else if (ingRaw && typeof ingRaw === 'object') {
+              // If some APIs send { items: [...] }
+              if (Array.isArray(ingRaw.items)) {
+                ingredientsArray = ingRaw.items.map((x) => String(x));
+              }
+            }
+            const ingredientsText = ingredientsArray.join(' ');
+            return {
+              ...r,
+              category: normalizeCategory(r),
+              ingredients: ingredientsArray,
+              _ingredientsText: ingredientsText.toLowerCase(), // cached lowercased text for search
+              _titleText: String(r.title || '').toLowerCase(),
+              _descText: String(r.description || '').toLowerCase(),
+              _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _categoryText: String(r.category || '').toLowerCase(),
+            };
+          });
+          setRecipes(normalized);
         }
       } catch {
         // Any unexpected error -> fallback to mock silently; keep UI responsive
         if (!cancelled) {
-          const withCat = mockRecipes.map((r) => ({ ...r, category: r.category || 'Veg' }));
-          setRecipes(withCat);
+          const normalized = mockRecipes.map((r) => {
+            const ingRaw = r.ingredients;
+            let ingredientsArray = [];
+            if (Array.isArray(ingRaw)) {
+              ingredientsArray = ingRaw.map((x) => String(x));
+            } else if (typeof ingRaw === 'string') {
+              const parts = ingRaw.includes(',') ? ingRaw.split(',') : [ingRaw];
+              ingredientsArray = parts.map((p) => p.trim()).filter(Boolean);
+            }
+            const ingredientsText = ingredientsArray.join(' ');
+            const cat = r.category || 'Veg';
+            return {
+              ...r,
+              category: cat,
+              ingredients: ingredientsArray,
+              _ingredientsText: ingredientsText.toLowerCase(),
+              _titleText: String(r.title || '').toLowerCase(),
+              _descText: String(r.description || '').toLowerCase(),
+              _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _categoryText: String(cat).toLowerCase(),
+            };
+          });
+          setRecipes(normalized);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -120,7 +184,7 @@ function App() {
   }, []);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     let base = recipes;
 
     // Favorites filter
@@ -137,19 +201,20 @@ function App() {
       });
     }
 
-    // Search filter
+    // Search filter (combined: title/name and ingredients; also include tags/desc as before)
     if (!q) return base;
-    return base.filter(r => {
-      const hay = [
-        r.title,
-        r.description,
-        r.category,
-        ...(r.tags || []),
-        ...(r.ingredients || []),
-      ].join(' ').toLowerCase();
-      return hay.includes(q);
+    return base.filter((r) => {
+      // Prefer precomputed lowercased fields when present
+      const titleMatch = (r._titleText ?? String(r.title || '').toLowerCase()).includes(q);
+      const ingredientsMatch = (r._ingredientsText ??
+        (Array.isArray(r.ingredients) ? r.ingredients.join(' ').toLowerCase() : String(r.ingredients || '').toLowerCase())
+      ).includes(q);
+      const tagsMatch = (r._tagsText ?? (r.tags || []).map((t) => String(t)).join(' ').toLowerCase()).includes(q);
+      const descMatch = (r._descText ?? String(r.description || '').toLowerCase()).includes(q);
+      // Combined match: name/title OR ingredients (and we keep tags/desc for broader search like before)
+      return titleMatch || ingredientsMatch || tagsMatch || descMatch;
     });
-  }, [recipes, query, favoriteIds, showOnlyFavorites, category]);
+  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));

@@ -56,7 +56,7 @@ const Header = ({
         <label className="search-wrap" aria-label="Search recipes" style={{ minWidth: 0 }}>
           <span className="search-icon" aria-hidden>🔎</span>
           <input
-            placeholder="Search recipes, ingredients, or tags..."
+            placeholder="Search by name or ingredients"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             aria-label="Search input"
