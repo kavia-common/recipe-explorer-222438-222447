@@ -196,6 +196,20 @@ const RecipeDetailModal = ({
                 🎯 {recipe.difficulty}
               </span>
             )}
+            {(Number.isFinite(Number(recipe.calories)) || Number.isFinite(Number(recipe.protein))) && (
+              <>
+                {Number.isFinite(Number(recipe.calories)) && (
+                  <span className="tag" aria-label={`Calories ${recipe.calories}`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                    🔥 {Number(recipe.calories)} kcal
+                  </span>
+                )}
+                {Number.isFinite(Number(recipe.protein)) && (
+                  <span className="tag" aria-label={`Protein ${recipe.protein} grams`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                    💪 {Number(recipe.protein)} g
+                  </span>
+                )}
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <select
@@ -330,6 +344,14 @@ const RecipeDetailModal = ({
           )}
 
           {active.description && <p className="card-desc" style={{marginBottom: 12}}>{active.description}</p>}
+
+          {Array.isArray(active.dietTags) && active.dietTags.length > 0 && (
+            <div className="taglist" style={{ marginBottom: 8 }}>
+              {active.dietTags.map((t, i) => (
+                <span key={i} className="tag" style={{ background: 'rgba(245,158,11,0.10)', borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))' }}>{t}</span>
+              ))}
+            </div>
+          )}
 
           {Array.isArray(active.ingredients) && active.ingredients.length > 0 && (
             <>

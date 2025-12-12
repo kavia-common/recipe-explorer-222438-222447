@@ -26,6 +26,16 @@ const Dashboard = ({ recipes }) => {
             }}
           />
         </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Diet Types</div>
+        {Object.keys(dietCounts).length === 0 && <div className="alert">No diet tags yet.</div>}
+        <div style={{ display: 'grid', gap: 8 }}>
+          {Object.entries(dietCounts).map(([k, v]) => (
+            <Bar key={k} label={k} value={v} max={dietMax} color="var(--ocean-secondary)" />
+          ))}
+        </div>
+      </div>
         <div style={{ marginTop: 6, color: 'var(--ocean-muted)' }}>{value}</div>
       </div>
     );
@@ -39,6 +49,19 @@ const Dashboard = ({ recipes }) => {
 
   const translationStats = getTranslationStats();
   const tsMax = Math.max(1, ...(Object.values(translationStats || {})));
+
+  const dietCounts = useMemo(() => {
+    const m = {};
+    (recipes || []).forEach(r => {
+      const tags = Array.isArray(r.dietTags) ? r.dietTags : [];
+      tags.forEach(t => {
+        const k = String(t).toLowerCase();
+        m[k] = (m[k] || 0) + 1;
+      });
+    });
+    return m;
+  }, [recipes]);
+  const dietMax = Math.max(1, ...Object.values(dietCounts || {}));
 
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>

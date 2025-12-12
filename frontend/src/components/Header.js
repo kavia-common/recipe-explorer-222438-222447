@@ -44,6 +44,13 @@ const Header = ({
   onCookTimeChange = () => {},
   quickSnacksOnly = false,
   onToggleQuickSnacks = () => {},
+  // New nutrition filters
+  caloriesBucket = 'All',
+  onCaloriesBucketChange = () => {},
+  highProtein = false,
+  onToggleHighProtein = () => {},
+  dietTypes = [],
+  onDietTypesChange = () => {},
 }) => {
   const [showNotif, setShowNotif] = useState(false);
   const [lang, setLang] = useState(getSelectedLanguage());
@@ -174,6 +181,68 @@ const Header = ({
             >
               {['All', '<10', '<30', '>=60'].map((opt) => <option key={opt} value={opt}>{opt === '<10' ? 'Under 10 minutes' : opt === '<30' ? 'Under 30 minutes' : opt === '>=60' ? 'Long recipes (>=60)' : 'All'}</option>)}
             </select>
+          </div>
+
+          {/* Calories bucket */}
+          <div aria-label="Calories filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>Calories</span>
+            <select
+              aria-label="Calories select"
+              value={caloriesBucket}
+              onChange={(e) => onCaloriesBucketChange(e.target.value)}
+              style={{
+                border: '1px solid var(--ocean-border)',
+                background: 'var(--ocean-surface)',
+                color: 'var(--ocean-text)',
+                padding: '8px 12px',
+                borderRadius: 999,
+                boxShadow: 'var(--ocean-shadow)'
+              }}
+            >
+              {['All', 'Low (<300)', 'Moderate (300–600)', 'High (>600)'].map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+
+          {/* High protein toggle */}
+          <button
+            className="theme-toggle"
+            onClick={onToggleHighProtein}
+            aria-pressed={highProtein}
+            aria-label="High protein"
+            title="High protein (≥20g)"
+            style={{
+              borderColor: highProtein ? 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' : undefined,
+              background: highProtein ? 'rgba(37,99,235,0.08)' : undefined
+            }}
+          >
+            💪 High protein
+          </button>
+
+          {/* Diet types multi-select as pills */}
+          <div aria-label="Diet types filter" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {['keto', 'vegan', 'gluten-free', 'sugar-free'].map((d) => {
+              const active = (dietTypes || []).map(String).map(s => s.toLowerCase()).includes(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  className="theme-toggle"
+                  aria-pressed={active}
+                  onClick={() => {
+                    const set = new Set((dietTypes || []).map(x => String(x).toLowerCase()));
+                    if (set.has(d)) set.delete(d); else set.add(d);
+                    onDietTypesChange(Array.from(set));
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    background: active ? 'rgba(37,99,235,0.08)' : 'var(--ocean-surface)',
+                    borderColor: active ? 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' : 'var(--ocean-border)',
+                  }}
+                >
+                  {d}
+                </button>
+              );
+            })}
           </div>
 
           {/* Quick Snacks toggle */}

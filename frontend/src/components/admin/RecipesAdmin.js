@@ -95,6 +95,9 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
               <th style={th}>Reviews</th>
               <th style={th}>Likes</th>
               <th style={th}>Comments</th>
+              <th style={th}>Calories</th>
+              <th style={th}>Protein</th>
+              <th style={th}>Diet</th>
               <th style={th}>Status</th>
               <th style={th}>Source</th>
               <th style={th}>Created</th>
@@ -122,6 +125,9 @@ const RecipesAdmin = ({ recipes, onRecipesChange }) => {
                 <td style={td}>{Number(r.reviewCount || 0)}</td>
                 <td style={td}>{require('../../data/community').getLikeCount(r.id)}</td>
                 <td style={td}>{require('../../data/community').getCommentsForRecipe(r.id).length}</td>
+                <td style={td}>{Number.isFinite(Number(r.calories)) ? Number(r.calories) : '-'}</td>
+                <td style={td}>{Number.isFinite(Number(r.protein)) ? `${Number(r.protein)}g` : '-'}</td>
+                <td style={td}>{Array.isArray(r.dietTags) && r.dietTags.length ? r.dietTags.join(', ') : '-'}</td>
                 <td style={td}><StatusBadge status={r.status} /></td>
                 <td style={td}>{r.source || 'user'}</td>
                 <td style={td}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</td>

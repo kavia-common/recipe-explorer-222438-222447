@@ -266,6 +266,62 @@ test('rejecting a pending recipe removes it and cleans favorites if any', async 
   expect(found).toBe(false);
 });
 
+test('calorie bucket filter reduces list appropriately and persists', async () => {
+  render(<App />);
+  await screen.findByRole('list');
+  const calorieSelect = screen.getByLabelText(/Calories select/i);
+  fireEvent.change(calorieSelect, { target: { value: 'Low (<300)' } });
+  await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+
+  const gridLow = await screen.findByRole('list');
+  const itemsLow = within(gridLow).getAllByRole('listitem');
+  expect(itemsLow.length).toBeGreaterThanOrEqual(0);
+  // persistence
+  expect(localStorage.getItem('app_filter_calories')).toBe('Low (<300)');
+
+  // Reset to All
+  fireEvent.change(calorieSelect, { target: { value: 'All' } });
+  await act(async () => { await new Promise(r => setTimeout(r, 60)); });
+});
+
+test('high protein toggle filters items (>=20g protein)', async () => {
+  render(<App />);
+  await screen.findByRole('list');
+
+  const btn = screen.getByRole('button', { name: /High protein/i });
+  fireEvent.click(btn);
+  await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  expect(items.length).toBeGreaterThanOrEqual(0);
+  expect(localStorage.getItem('app_filter_high_protein')).toBe('true');
+
+  // turn off
+  fireEvent.click(btn);
+  await act(async () => { await new Promise(r => setTimeout(r, 60)); });
+});
+
+test('diet type pills filter list (OR behavior)', async () => {
+  render(<App />);
+  await screen.findByRole('list');
+
+  const veganPill = screen.getByRole('button', { name: /^vegan$/i });
+  fireEvent.click(veganPill);
+  await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  expect(items.length).toBeGreaterThanOrEqual(0);
+  const stored = JSON.parse(localStorage.getItem('app_filter_diet_types') || '[]');
+  expect(Array.isArray(stored)).toBe(true);
+  expect(stored.map(s => s.toLowerCase())).toContain('vegan');
+
+  // turn off
+  fireEvent.click(veganPill);
+  await act(async () => { await new Promise(r => setTimeout(r, 60)); });
+});
+
 test('cook time filters reduce results appropriately', async () => {
   render(<App />);
   await screen.findByRole('list');

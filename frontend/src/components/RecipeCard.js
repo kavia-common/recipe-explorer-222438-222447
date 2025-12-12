@@ -190,6 +190,32 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
           </div>
         )}
         <p className="card-desc">{description}</p>
+
+        {/* Nutrition summary */}
+        {(Number.isFinite(Number(recipe.calories)) || Number.isFinite(Number(recipe.protein))) && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+            {Number.isFinite(Number(recipe.calories)) && (
+              <span className="tag" title="Calories per serving" style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                🔥 {Number(recipe.calories)} kcal
+              </span>
+            )}
+            {Number.isFinite(Number(recipe.protein)) && (
+              <span className="tag" title="Protein per serving" style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                💪 {Number(recipe.protein)} g protein
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Diet tags */}
+        {Array.isArray(recipe.dietTags) && recipe.dietTags.length > 0 && (
+          <div className="taglist" aria-label="diet-tags" style={{ marginBottom: 6 }}>
+            {recipe.dietTags.map((t, i) => (
+              <span className="tag" key={i} style={{ background: 'rgba(245,158,11,0.10)', borderColor: 'color-mix(in oklab, var(--ocean-secondary), var(--ocean-border))' }}>{t}</span>
+            ))}
+          </div>
+        )}
+
         {tags.length > 0 && (
           <div className="taglist" aria-label="tags">
             {tags.map((t, i) => (

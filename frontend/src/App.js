@@ -31,6 +31,10 @@ const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
 const DIFFICULTY_OPTIONS = ['All', 'Easy', 'Medium', 'Hard'];
 const COOK_TIME_LS_KEY = 'app_filter_cook_time';
 const QUICK_SNACKS_LS_KEY = 'app_filter_quick_snacks';
+// New nutrition filter keys
+const CALORIES_LS_KEY = 'app_filter_calories';
+const HIGH_PROTEIN_LS_KEY = 'app_filter_high_protein';
+const DIET_TYPES_LS_KEY = 'app_filter_diet_types';
 
 /**
  * Root Recipe Explorer application with Ocean Professional theme.
@@ -66,6 +70,20 @@ function App() {
   const [quickSnacksOnly, setQuickSnacksOnly] = useState(() => {
     try { return window.localStorage.getItem(QUICK_SNACKS_LS_KEY) === 'true'; } catch { return false; }
   });
+  // New: Nutrition filters state with persistence
+  const [caloriesBucket, setCaloriesBucket] = useState(() => {
+    try { return window.localStorage.getItem(CALORIES_LS_KEY) || 'All'; } catch { return 'All'; }
+  });
+  const [highProtein, setHighProtein] = useState(() => {
+    try { return window.localStorage.getItem(HIGH_PROTEIN_LS_KEY) === 'true'; } catch { return false; }
+  });
+  const [dietTypes, setDietTypes] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(DIET_TYPES_LS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -83,6 +101,15 @@ function App() {
   useEffect(() => {
     try { window.localStorage.setItem(QUICK_SNACKS_LS_KEY, String(quickSnacksOnly)); } catch {}
   }, [quickSnacksOnly]);
+  useEffect(() => {
+    try { window.localStorage.setItem(CALORIES_LS_KEY, String(caloriesBucket)); } catch {}
+  }, [caloriesBucket]);
+  useEffect(() => {
+    try { window.localStorage.setItem(HIGH_PROTEIN_LS_KEY, String(highProtein)); } catch {}
+  }, [highProtein]);
+  useEffect(() => {
+    try { window.localStorage.setItem(DIET_TYPES_LS_KEY, JSON.stringify(dietTypes || [])); } catch {}
+  }, [dietTypes]);
 
   useEffect(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -134,6 +161,12 @@ function App() {
               ingredients: ingredientsArray,
               cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null,
               difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium',
+              // Nutrition normalization with safe defaults
+              calories: Number.isFinite(Number(r.calories)) ? Number(r.calories) : null,
+              protein: Number.isFinite(Number(r.protein)) ? Number(r.protein) : null,
+              carbs: Number.isFinite(Number(r.carbs)) ? Number(r.carbs) : null,
+              fat: Number.isFinite(Number(r.fat)) ? Number(r.fat) : null,
+              dietTags: Array.isArray(r.dietTags) ? r.dietTags.map((x) => String(x).toLowerCase()) : [],
             };
             const withAdmin = normalizeAdminFields(base, { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' });
             const rating = getRatingSummary(withAdmin.id);
@@ -147,6 +180,7 @@ function App() {
               _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
               _categoryText: String(withAdmin.category || '').toLowerCase(),
               _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
+              _dietTagsText: (withAdmin.dietTags || []).map((t) => String(t)).join(' ').toLowerCase(),
             };
           });
           const approved = filterApproved(normalized);
@@ -193,7 +227,18 @@ function App() {
             const ingredientsText = ingredientsArray.join(' ');
             const cat = r.category || 'Veg';
             const withAdmin = normalizeAdminFields(
-              { ...r, category: cat, ingredients: ingredientsArray, cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null, difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium' },
+              {
+                ...r,
+                category: cat,
+                ingredients: ingredientsArray,
+                cookingTime: Number.isFinite(Number(r.cookingTime)) && Number(r.cookingTime) >= 0 ? Number(r.cookingTime) : null,
+                difficulty: ['Easy','Medium','Hard'].includes(r.difficulty) ? r.difficulty : 'Medium',
+                calories: Number.isFinite(Number(r.calories)) ? Number(r.calories) : null,
+                protein: Number.isFinite(Number(r.protein)) ? Number(r.protein) : null,
+                carbs: Number.isFinite(Number(r.carbs)) ? Number(r.carbs) : null,
+                fat: Number.isFinite(Number(r.fat)) ? Number(r.fat) : null,
+                dietTags: Array.isArray(r.dietTags) ? r.dietTags.map((x) => String(x).toLowerCase()) : [],
+              },
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
             const rating = getRatingSummary(withAdmin.id);
@@ -207,6 +252,7 @@ function App() {
               _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
               _categoryText: String(cat).toLowerCase(),
               _difficultyText: String(withAdmin.difficulty || 'Medium').toLowerCase(),
+              _dietTagsText: (withAdmin.dietTags || []).map((t) => String(t)).join(' ').toLowerCase(),
             };
           });
           setRecipes(normalized);
@@ -302,6 +348,33 @@ function App() {
         return isQuickTime || hasSnackWord;
       });
     }
+
+    // Calories bucket filter
+    if (caloriesBucket && caloriesBucket !== 'All') {
+      base = base.filter((r) => {
+        const c = Number.isFinite(Number(r.calories)) ? Number(r.calories) : null;
+        if (c == null) return false; // missing excludes when a bucket is selected
+        if (caloriesBucket.startsWith('Low')) return c < 300;
+        if (caloriesBucket.startsWith('Moderate')) return c >= 300 && c <= 600;
+        if (caloriesBucket.startsWith('High')) return c > 600;
+        return true;
+      });
+    }
+
+    // High Protein filter (>=20g), missing protein excludes when enabled
+    if (highProtein) {
+      base = base.filter((r) => Number.isFinite(Number(r.protein)) && Number(r.protein) >= 20);
+    }
+
+    // Diet types OR selection: include if any selected tag is present (normalize lowercase)
+    if (Array.isArray(dietTypes) && dietTypes.length > 0) {
+      const wanted = new Set(dietTypes.map((d) => String(d).toLowerCase()));
+      base = base.filter((r) => {
+        const tags = Array.isArray(r.dietTags) ? r.dietTags.map((x) => String(x).toLowerCase()) : [];
+        return tags.some((t) => wanted.has(t));
+      });
+    }
+
     if (!q) return base;
     return base.filter((r) => {
       const titleMatch = (r._titleText ?? String(r.title || '').toLowerCase()).includes(q);
@@ -310,7 +383,7 @@ function App() {
       const descMatch = (r._descText ?? String(r.description || '').toLowerCase()).includes(q);
       return titleMatch || ingredientsMatch || tagsMatch || descMatch;
     });
-  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty, cookTime, quickSnacksOnly]);
+  }, [recipes, debouncedQuery, favoriteIds, showOnlyFavorites, category, difficulty, cookTime, quickSnacksOnly, caloriesBucket, highProtein, dietTypes]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -511,6 +584,13 @@ function App() {
         onCookTimeChange={setCookTime}
         quickSnacksOnly={quickSnacksOnly}
         onToggleQuickSnacks={() => setQuickSnacksOnly(v => !v)}
+        // New nutrition filters
+        caloriesBucket={caloriesBucket}
+        onCaloriesBucketChange={setCaloriesBucket}
+        highProtein={highProtein}
+        onToggleHighProtein={() => setHighProtein(v => !v)}
+        dietTypes={dietTypes}
+        onDietTypesChange={setDietTypes}
       />
 
       {renderMain()}
