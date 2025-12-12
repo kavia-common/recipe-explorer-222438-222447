@@ -29,15 +29,18 @@
 
 /* Global */
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+/* Allow natural document height and scrolling */
+html, body, #root { height: auto; min-height: 100%; }
 body {
   margin: 0;
   color: var(--ocean-text);
   background: var(--ocean-bg);
+  overflow-y: auto;
 }
 
 .app-root {
-  min-height: 100%;
+  /* Let content define height; ensure footer can push to bottom via margin-top:auto */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background:
@@ -220,6 +223,13 @@ body {
   place-items: center;
   z-index: 50;
   padding: 20px;
+}
+
+/* When a modal is open, prevent background scroll on the body element */
+.body-lock {
+  overflow: hidden !important;
+  position: relative;
+  width: 100%;
 }
 .modal {
   background: var(--ocean-surface);

@@ -327,6 +327,18 @@ function App() {
     if (selected && String(selected.id) === idKey) setSelected(null);
   };
 
+  // Lock background scroll when any modal is open
+  const anyModalOpen = Boolean(selected) || showForm || confirmOpen;
+  useEffect(() => {
+    const body = document.body;
+    if (anyModalOpen) {
+      body.classList.add('body-lock');
+    } else {
+      body.classList.remove('body-lock');
+    }
+    return () => body.classList.remove('body-lock');
+  }, [anyModalOpen]);
+
   return (
     <div className="app-root">
       <Header

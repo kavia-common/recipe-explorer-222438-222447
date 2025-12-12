@@ -9,8 +9,13 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
     if (recipe) {
       document.addEventListener('keydown', onEsc);
+      // lock body scroll while modal is open
+      document.body.classList.add('body-lock');
     }
-    return () => document.removeEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('keydown', onEsc);
+      document.body.classList.remove('body-lock');
+    };
   }, [recipe, onClose]);
 
   if (!recipe) return null;

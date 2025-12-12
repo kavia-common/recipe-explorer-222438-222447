@@ -13,8 +13,14 @@ import React, { useEffect } from 'react';
 const ConfirmDialog = ({ open, title = 'Confirm', message = 'Are you sure?', onCancel = () => {}, onConfirm = () => {} }) => {
   useEffect(() => {
     function onEsc(e) { if (e.key === 'Escape') onCancel(); }
-    if (open) document.addEventListener('keydown', onEsc);
-    return () => document.removeEventListener('keydown', onEsc);
+    if (open) {
+      document.addEventListener('keydown', onEsc);
+      document.body.classList.add('body-lock');
+    }
+    return () => {
+      document.removeEventListener('keydown', onEsc);
+      document.body.classList.remove('body-lock');
+    };
   }, [open, onCancel]);
 
   if (!open) return null;
