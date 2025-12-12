@@ -31,6 +31,8 @@ const Dashboard = ({ recipes }) => {
 
   const catMax = Math.max(1, ...Object.values(metrics.categoryCounts));
   const diffMax = Math.max(1, ...Object.values(metrics.difficultyCounts || {}));
+  const dist = metrics.ratingsDistribution || {1:0,2:0,3:0,4:0,5:0};
+  const distMax = Math.max(1, ...Object.values(dist));
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
       <div className="card" style={{ padding: 12 }}>
@@ -57,6 +59,15 @@ const Dashboard = ({ recipes }) => {
             ))}
           </div>
         </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>Ratings</div>
+          <div className="alert">Avg rating across approved: <strong>{metrics.ratingsAverageAcrossApproved || 0}</strong> ⭐</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {([5,4,3,2,1]).map((k) => (
+              <Bar key={k} label={`${k} ⭐`} value={dist[k] || 0} max={distMax} />
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 12 }}>
@@ -67,6 +78,16 @@ const Dashboard = ({ recipes }) => {
           {metrics.topFavorited.length === 0 && <li style={{ color: 'var(--ocean-muted)' }}>No favorites yet</li>}
           {metrics.topFavorited.map((r) => (
             <li key={r.id}>{r.title}</li>
+          ))}
+        </ul>
+        <div style={{ fontWeight: 700, marginTop: 8, marginBottom: 6 }}>Top highest-rated (up to 5)</div>
+        <ul className="list">
+          {(metrics.topHighestRated || []).length === 0 && <li style={{ color: 'var(--ocean-muted)' }}>No reviews yet</li>}
+          {(metrics.topHighestRated || []).map((r) => (
+            <li key={r.id}>
+              <span style={{ fontWeight: 600 }}>{r.title}</span>
+              <span style={{ color: 'var(--ocean-muted)' }}> — {r.averageRating} ⭐ ({r.reviewCount})</span>
+            </li>
           ))}
         </ul>
         <div style={{ fontWeight: 700, marginTop: 8, marginBottom: 6 }}>Recently added</div>

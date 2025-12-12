@@ -134,6 +134,14 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
       </div>
       <div className="card-body">
         <h3 className="card-title">{title}</h3>
+        {(Number(recipe.averageRating) > 0 || Number(recipe.reviewCount) > 0) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span className="tag" aria-label={`Average rating ${recipe.averageRating} out of 5`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+              ⭐ {Number(recipe.averageRating || 0).toFixed(1)}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--ocean-muted)' }}>({Number(recipe.reviewCount || 0)})</span>
+          </div>
+        )}
         <p className="card-desc">{description}</p>
         {tags.length > 0 && (
           <div className="taglist" aria-label="tags">

@@ -10,6 +10,7 @@ import { getFavoriteIds, toggleFavorite } from './data/favorites';
 import RecipeForm from './components/RecipeForm';
 import ConfirmDialog from './components/ConfirmDialog';
 import { mergeWithLocal, upsertLocalRecipe, deleteLocalRecipe, genId } from './data/recipes';
+import { getRatingSummary } from './data/reviews';
 import { getCurrentRoute, navigateTo, getLastRoute } from './data/admin';
 import { RECIPE_STATUS, RECIPE_SOURCE, normalizeAdminFields, getApprovedRecipes as filterApproved } from './data/adminRecipes';
 import AdminLayout from './components/admin/AdminLayout';
@@ -168,8 +169,11 @@ function App() {
               base,
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
+            const rating = getRatingSummary(withAdmin.id);
             return {
               ...withAdmin,
+              averageRating: rating.averageRating,
+              reviewCount: rating.reviewCount,
               _ingredientsText: ingredientsText.toLowerCase(), // cached lowercased text for search
               _titleText: String(withAdmin.title || '').toLowerCase(),
               _descText: String(withAdmin.description || '').toLowerCase(),
@@ -205,8 +209,11 @@ function App() {
               },
               { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
             );
+            const rating = getRatingSummary(withAdmin.id);
             return {
               ...withAdmin,
+              averageRating: rating.averageRating,
+              reviewCount: rating.reviewCount,
               _ingredientsText: ingredientsText.toLowerCase(),
               _titleText: String(withAdmin.title || '').toLowerCase(),
               _descText: String(withAdmin.description || '').toLowerCase(),
@@ -370,12 +377,16 @@ function App() {
       const idKey = String(toSave.id);
       const idx = prev.findIndex((r) => String(r.id) === idKey);
       const normalized = normalizeForSearch(toSave);
+      const rs = getRatingSummary(toSave.id);
+      normalized.averageRating = rs.averageRating;
+      normalized.reviewCount = rs.reviewCount;
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = normalized;
         return next;
       }
-      return [normalized, ...prev];
+      const rs2 = getRatingSummary(toSave.id);
+      return [{ ...normalized, averageRating: rs2.averageRating, reviewCount: rs2.reviewCount }, ...prev];
     });
 
     setShowForm(false);
@@ -388,6 +399,10 @@ function App() {
 
     // Remove from local storage
     deleteLocalRecipe(idKey);
+    try {
+      const { purgeReviewsForRecipe } = require('./data/reviews');
+      purgeReviewsForRecipe(idKey);
+    } catch {}
 
     // Remove in memory and clean favorite if set
     setRecipes((prev) => prev.filter((r) => String(r.id) !== idKey));
@@ -485,7 +500,14 @@ function App() {
       )}
       <RecipeDetailModal
         recipe={selected}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          if (selected) {
+            // refresh rating fields for this id
+            const rs = getRatingSummary(selected.id);
+            setRecipes((prev) => prev.map((r) => String(r.id) === String(selected.id) ? { ...r, averageRating: rs.averageRating, reviewCount: rs.reviewCount } : r));
+          }
+          setSelected(null);
+        }}
         isFavorite={isFav}
         onToggleFavorite={onToggleFavorite}
         onEdit={openEditFromModal}

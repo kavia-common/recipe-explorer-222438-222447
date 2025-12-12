@@ -1,5 +1,6 @@
 import { getLocalRecipes, setLocalRecipes, upsertLocalRecipe, deleteLocalRecipe } from './recipes';
 import { getFavoriteIds, setFavoriteIds } from './favorites';
+import { purgeReviewsForRecipe, computeRatingsAnalytics } from './reviews';
 
 export const RECIPE_STATUS = {
   APPROVED: 'approved',
@@ -70,7 +71,7 @@ export function approveRecipe(id) {
 
 /**
  * PUBLIC_INTERFACE
- * Reject a recipe by id (delete for simplicity). Also cleanup favorites.
+ * Reject a recipe by id (delete for simplicity). Also cleanup favorites and reviews.
  */
 export function rejectRecipe(id) {
   const idKey = String(id);
@@ -81,6 +82,8 @@ export function rejectRecipe(id) {
   if (favs.includes(id)) {
     setFavoriteIds(favs.filter((fid) => String(fid) !== idKey));
   }
+  // purge all reviews for this recipe
+  purgeReviewsForRecipe(idKey);
   return next;
 }
 
@@ -100,7 +103,7 @@ export function adminUpsert(recipeDraft) {
 
 /**
  * PUBLIC_INTERFACE
- * Delete by id and cleanup favorites.
+ * Delete by id and cleanup favorites and reviews.
  */
 export function hardDeleteRecipe(id) {
   const idKey = String(id);
@@ -109,12 +112,13 @@ export function hardDeleteRecipe(id) {
   if (favs.includes(id)) {
     setFavoriteIds(favs.filter((fid) => String(fid) !== idKey));
   }
+  purgeReviewsForRecipe(idKey);
   return getLocalRecipes();
 }
 
 /**
  * PUBLIC_INTERFACE
- * Compute analytics metrics.
+ * Compute analytics metrics, including ratings.
  */
 export function computeAnalytics(recipesArray) {
   const arr = Array.isArray(recipesArray) ? recipesArray : [];
@@ -144,7 +148,7 @@ export function computeAnalytics(recipesArray) {
     .slice(0, 5);
 
   // Difficulty distribution
-  const diffKeys = ['Easy','Medium','Hard'];
+  const diffKeys = ['Easy', 'Medium', 'Hard'];
   const difficultyCounts = diffKeys.reduce((acc, d) => {
     acc[d] = arr.filter((r) => (r.difficulty || 'Medium') === d).length;
     return acc;
@@ -153,7 +157,43 @@ export function computeAnalytics(recipesArray) {
   const times = arr
     .map((r) => Number(r.cookingTime))
     .filter((n) => Number.isFinite(n) && n >= 0);
-  const averageCookingTime = times.length ? Math.round(times.reduce((a,b)=>a+b,0) / times.length) : 0;
+  const averageCookingTime = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
 
-  return { total, approved, pending, categoryCounts, favoritesTotal, topFavorited, recentlyAdded, difficultyCounts, averageCookingTime };
+  // Ratings analytics
+  let ratings = { perRecipe: new Map(), averageRatingAcrossApproved: 0, ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+  try {
+    ratings = computeRatingsAnalytics(arr);
+  } catch {
+    // ignore
+  }
+
+  // Top 5 highest-rated recipes (approved only); ties broken by reviewCount
+  const approvedSet = new Set(arr.filter(r => (r.status || RECIPE_STATUS.APPROVED) === RECIPE_STATUS.APPROVED).map(r => String(r.id)));
+  const ratedList = Array.from(ratings.perRecipe.entries())
+    .filter(([rid]) => approvedSet.has(String(rid)))
+    .map(([rid, s]) => ({ id: rid, ...s }))
+    .sort((a, b) => {
+      if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating;
+      return (b.reviewCount || 0) - (a.reviewCount || 0);
+    })
+    .slice(0, 5)
+    .map((x) => {
+      const rec = arr.find(r => String(r.id) === String(x.id));
+      return { ...x, title: rec?.title || String(x.id) };
+    });
+
+  return {
+    total,
+    approved,
+    pending,
+    categoryCounts,
+    favoritesTotal,
+    topFavorited,
+    recentlyAdded,
+    difficultyCounts,
+    averageCookingTime,
+    ratingsAverageAcrossApproved: ratings.averageRatingAcrossApproved,
+    ratingsDistribution: ratings.ratingDistribution,
+    topHighestRated: ratedList,
+  };
 }

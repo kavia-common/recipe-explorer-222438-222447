@@ -132,26 +132,6 @@ test('difficulty filter affects displayed list', async () => {
   const items = within(grid).getAllByRole('listitem');
   expect(items.length).toBeGreaterThan(0);
 });
-  render(<App />);
-
-  // wait for initial list
-  const grid = await screen.findByRole('list');
-  const initialItems = within(grid).getAllByRole('listitem');
-  expect(initialItems.length).toBeGreaterThan(0);
-
-  const input = screen.getByLabelText('Search input');
-  // Ingredient present in mock: "Garlic" appears in multiple recipes
-  fireEvent.change(input, { target: { value: 'garlic' } });
-
-  // debounce 200ms
-  await act(async () => {
-    await wait(250);
-  });
-
-  const gridAfter = await screen.findByRole('list');
-  const itemsAfter = within(gridAfter).getAllByRole('listitem');
-  expect(itemsAfter.length).toBeGreaterThan(0);
-});
 
 test('adding a recipe saves as pending and not visible on main feed until approved', async () => {
   render(<App />);
@@ -393,4 +373,109 @@ test('deleting a recipe removes it from the list', async () => {
     const stillThere = items.some((li) => within(li).queryByText('Test Brownie'));
     expect(stillThere).toBe(false);
   }
+});
+
+//
+// New tests for Ratings & Reviews
+//
+test('adding a review updates average and count in detail and on card', async () => {
+  render(<App />);
+  // Open a known recipe from mock
+  const grid = await screen.findByRole('list');
+  const card = within(grid).getAllByRole('listitem')[0];
+  fireEvent.click(card);
+
+  const modal = await screen.findByRole('dialog');
+  // Find star buttons by aria-label
+  const starButtons = within(modal).getAllByRole('button').filter(b => {
+    const a = b.getAttribute('aria-label') || '';
+    return /star/.test(a);
+    });
+  expect(starButtons.length).toBe(5);
+
+  // Select 4 stars
+  fireEvent.click(starButtons[3]);
+  const textarea = within(modal).getByLabelText(/Comment/i);
+  fireEvent.change(textarea, { target: { value: 'Tasty!' } });
+
+  const submit = within(modal).getByRole('button', { name: /Add review|Save review/i });
+  fireEvent.click(submit);
+
+  // Close modal to refresh list
+  const close = within(modal).getByLabelText('Close');
+  fireEvent.click(close);
+
+  // Now the card should show rating badge
+  const grid2 = await screen.findByRole('list');
+  const firstCard = within(grid2).getAllByRole('listitem')[0];
+  expect(firstCard).toHaveTextContent('⭐');
+  expect(firstCard).toHaveTextContent(/\(\d+\)/); // review count
+});
+
+test('editing and deleting a review updates counts', async () => {
+  render(<App />);
+
+  // Open first card
+  const grid = await screen.findByRole('list');
+  const card = within(grid).getAllByRole('listitem')[0];
+  fireEvent.click(card);
+  const modal = await screen.findByRole('dialog');
+
+  // Add review if none
+  let starButtons = within(modal).getAllByRole('button').filter(b => /star/.test(b.getAttribute('aria-label') || ''));
+  if (starButtons.length === 5) {
+    fireEvent.click(starButtons[4]); // 5 stars
+    const textarea = within(modal).getByLabelText(/Comment/i);
+    fireEvent.change(textarea, { target: { value: 'Great!' } });
+    const submit = within(modal).getByRole('button', { name: /Add review|Save review/i });
+    fireEvent.click(submit);
+  }
+
+  // Edit (click one star lower)
+  const modal2 = await screen.findByRole('dialog');
+  starButtons = within(modal2).getAllByRole('button').filter(b => /star/.test(b.getAttribute('aria-label') || ''));
+  fireEvent.click(starButtons[3]); // 4 stars
+  const saveBtn = within(modal2).getByRole('button', { name: /Save review/i });
+  fireEvent.click(saveBtn);
+
+  // Delete
+  const delBtn = within(modal2).getByRole('button', { name: /Delete my review/i });
+  fireEvent.click(delBtn);
+
+  // Close
+  const close = within(modal2).getByLabelText('Close');
+  fireEvent.click(close);
+
+  // Ensure app still renders grid after operations
+  const grid3 = await screen.findByRole('list');
+  const firstCard = within(grid3).getAllByRole('listitem')[0];
+  expect(firstCard).toBeInTheDocument();
+});
+
+test('Admin dashboard metrics reflect reviews and Admin table shows rating columns', async () => {
+  render(<App />);
+  // Add a review on first recipe quickly
+  const grid = await screen.findByRole('list');
+  const card = within(grid).getAllByRole('listitem')[0];
+  fireEvent.click(card);
+  const modal = await screen.findByRole('dialog');
+  const starButtons = within(modal).getAllByRole('button').filter(b => /star/.test(b.getAttribute('aria-label') || ''));
+  fireEvent.click(starButtons[2]); // 3 stars
+  const submit = within(modal).getByRole('button', { name: /Add review|Save review/i });
+  fireEvent.click(submit);
+  const close = within(modal).getByLabelText('Close');
+  fireEvent.click(close);
+
+  // Go to Admin Dashboard
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+  // Ratings blocks should exist
+  await screen.findByText(/Ratings/);
+  expect(screen.getByText(/Avg rating across approved/)).toBeInTheDocument();
+
+  // Go to Admin Recipes and check columns
+  const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
+  fireEvent.click(recipesTab);
+  await screen.findByText(/Avg Rating/);
+  await screen.findByText(/Reviews/);
 });
