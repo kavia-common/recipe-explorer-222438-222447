@@ -9,7 +9,13 @@ import Header from './components/Header';
 import { getFavoriteIds, toggleFavorite } from './data/favorites';
 import RecipeForm from './components/RecipeForm';
 import ConfirmDialog from './components/ConfirmDialog';
-import { mergeWithLocal, upsertLocalRecipe, deleteLocalRecipe, genId, getLocalRecipes, setLocalRecipes } from './data/recipes';
+import { mergeWithLocal, upsertLocalRecipe, deleteLocalRecipe, genId } from './data/recipes';
+import { getCurrentRoute, navigateTo, getLastRoute } from './data/admin';
+import { RECIPE_STATUS, RECIPE_SOURCE, normalizeAdminFields, getApprovedRecipes as filterApproved } from './data/adminRecipes';
+import AdminLayout from './components/admin/AdminLayout';
+import Dashboard from './components/admin/Dashboard';
+import RecipesAdmin from './components/admin/RecipesAdmin';
+import Approvals from './components/admin/Approvals';
 
 const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
 const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
@@ -23,6 +29,7 @@ const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
 function App() {
   const [theme, setTheme] = useState('light');
   const [recipes, setRecipes] = useState([]);
+  const [route, setRoute] = useState(getCurrentRoute() || getLastRoute() || '/');
   const [query, setQuery] = useState('');
   // Keep a debounced value to avoid excessive re-renders when typing
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -130,15 +137,23 @@ function App() {
               }
             }
             const ingredientsText = ingredientsArray.join(' ');
-            return {
+            const base = {
               ...r,
               category: normalizeCategory(r),
               ingredients: ingredientsArray,
+            };
+            const withAdmin = normalizeAdminFields(
+              // mock defaults: source mock; approved
+              base,
+              { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
+            );
+            return {
+              ...withAdmin,
               _ingredientsText: ingredientsText.toLowerCase(), // cached lowercased text for search
-              _titleText: String(r.title || '').toLowerCase(),
-              _descText: String(r.description || '').toLowerCase(),
-              _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
-              _categoryText: String(r.category || '').toLowerCase(),
+              _titleText: String(withAdmin.title || '').toLowerCase(),
+              _descText: String(withAdmin.description || '').toLowerCase(),
+              _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _categoryText: String(withAdmin.category || '').toLowerCase(),
             };
           });
           setRecipes(normalized);
@@ -158,14 +173,16 @@ function App() {
             }
             const ingredientsText = ingredientsArray.join(' ');
             const cat = r.category || 'Veg';
+            const withAdmin = normalizeAdminFields(
+              { ...r, category: cat, ingredients: ingredientsArray },
+              { defaultStatus: RECIPE_STATUS.APPROVED, source: RECIPE_SOURCE.MOCK, submittedBy: 'mock' }
+            );
             return {
-              ...r,
-              category: cat,
-              ingredients: ingredientsArray,
+              ...withAdmin,
               _ingredientsText: ingredientsText.toLowerCase(),
-              _titleText: String(r.title || '').toLowerCase(),
-              _descText: String(r.description || '').toLowerCase(),
-              _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
+              _titleText: String(withAdmin.title || '').toLowerCase(),
+              _descText: String(withAdmin.description || '').toLowerCase(),
+              _tagsText: (withAdmin.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
               _categoryText: String(cat).toLowerCase(),
             };
           });
@@ -181,6 +198,17 @@ function App() {
     };
   }, []);
 
+  // Router: listen for hash changes
+  useEffect(() => {
+    const onHash = () => setRoute(getCurrentRoute());
+    window.addEventListener('hashchange', onHash);
+    // initial correction
+    if (!window.location.hash && route !== '/') {
+      navigateTo(route);
+    }
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [route]);
+
   // Keep favorites state in sync if storage changes (multi-tab)
   useEffect(() => {
     const onStorage = (e) => {
@@ -194,7 +222,8 @@ function App() {
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
-    let base = recipes;
+    // For main feed, only approved recipes should be visible
+    let base = filterApproved(recipes);
 
     // Favorites filter
     if (showOnlyFavorites) {
@@ -284,6 +313,15 @@ function App() {
     toSave.updatedAt = now;
     if (!toSave.category) toSave.category = 'Veg';
 
+    // Assign admin fields:
+    // If called from main UI (not Admin editor), create as pending by default.
+    if (!toSave.status) {
+      // infer admin mode by presence of explicit status on draft
+      toSave.status = RECIPE_STATUS.PENDING;
+    }
+    if (!toSave.source) toSave.source = RECIPE_SOURCE.USER;
+    if (!toSave.submittedBy) toSave.submittedBy = 'user';
+
     // Persist to localStorage first
     upsertLocalRecipe(toSave);
 
@@ -339,6 +377,25 @@ function App() {
     return () => body.classList.remove('body-lock');
   }, [anyModalOpen]);
 
+  const AdminRouter = ({ route, recipes, setRecipes, err }) => {
+    // pass full recipes array (all statuses) to admin pages
+    const routeKey = route.replace(/^\/admin\/?/, '') || 'dashboard';
+    let content = null;
+    if (routeKey.startsWith('recipes')) {
+      content = <RecipesAdmin recipes={recipes} onRecipesChange={setRecipes} />;
+    } else if (routeKey.startsWith('approvals')) {
+      content = <Approvals recipes={recipes} onRecipesChange={setRecipes} />;
+    } else {
+      content = (
+        <AdminLayout active="dashboard">
+          {err && <div role="alert" className="alert alert-warn">{err}</div>}
+          <Dashboard recipes={recipes} />
+        </AdminLayout>
+      );
+    }
+    return content;
+  };
+
   return (
     <div className="app-root">
       <Header
@@ -354,25 +411,35 @@ function App() {
         categoryOptions={CATEGORY_OPTIONS}
         onAddRecipe={openAdd}
       />
-      <main className="container">
-        {err && <div role="alert" className="alert alert-warn">{err}</div>}
-        {loading ? (
-          <div className="skeleton-grid">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div className="skeleton-card" key={i} />
-            ))}
-          </div>
-        ) : (
-          <RecipeGrid
-            items={filtered}
-            onSelect={setSelected}
-            isFavorite={isFav}
-            onToggleFavorite={onToggleFavorite}
-            onEdit={openEditFromCard}
-            onDelete={openDelete}
-          />
-        )}
-      </main>
+      {/* Routing: "/" main feed, "/admin/*" admin pages */}
+      {route.startsWith('/admin') ? (
+        <AdminRouter
+          route={route}
+          recipes={recipes}
+          setRecipes={setRecipes}
+          err={err}
+        />
+      ) : (
+        <main className="container">
+          {err && <div role="alert" className="alert alert-warn">{err}</div>}
+          {loading ? (
+            <div className="skeleton-grid">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div className="skeleton-card" key={i} />
+              ))}
+            </div>
+          ) : (
+            <RecipeGrid
+              items={filtered}
+              onSelect={setSelected}
+              isFavorite={isFav}
+              onToggleFavorite={onToggleFavorite}
+              onEdit={openEditFromCard}
+              onDelete={openDelete}
+            />
+          )}
+        </main>
+      )}
       <RecipeDetailModal
         recipe={selected}
         onClose={() => setSelected(null)}

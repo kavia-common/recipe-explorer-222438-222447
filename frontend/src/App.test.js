@@ -132,19 +132,127 @@ test('search by ingredient returns matching items', async () => {
   expect(itemsAfter.length).toBeGreaterThan(0);
 });
 
-test('adding a recipe appears in grid with selected category', async () => {
+test('adding a recipe saves as pending and not visible on main feed until approved', async () => {
   render(<App />);
   await addRecipeFlow();
 
-  // Filter to Desserts and ensure our new recipe is present
-  const dessertsPill = await screen.findByRole('button', { name: 'Desserts' });
-  fireEvent.click(dessertsPill);
+  // Narrow search to the new item on main feed (should not appear because pending)
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  // It should not appear yet
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  const found = items.some((li) => within(li).queryByText('Test Brownie'));
+  expect(found).toBe(false);
+
+  // Open Admin Approvals and approve it
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+
+  // Should navigate to admin dashboard by default, go to approvals
+  await act(async () => { await wait(50); });
+  // Click Approvals tab
+  const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });
+  fireEvent.click(approvalsTab);
+  await act(async () => { await wait(50); });
+
+  // Approve the pending item
+  const approveBtn = await screen.findByRole('button', { name: 'Approve' });
+  fireEvent.click(approveBtn);
+  await act(async () => { await wait(50); });
+
+  // Navigate back to main
+  window.location.hash = '#/';
+  await act(async () => { await wait(100); });
+
+  const input2 = screen.getByLabelText('Search input');
+  fireEvent.change(input2, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  const gridAfter = await screen.findByRole('list');
+  const itemsAfter = within(gridAfter).getAllByRole('listitem');
+  const nowFound = itemsAfter.some((li) => within(li).queryByText('Test Brownie'));
+  expect(nowFound).toBe(true);
+});
+
+test('rejecting a pending recipe removes it and cleans favorites if any', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Go to admin approvals
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+  await act(async () => { await wait(50); });
+  const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });
+  fireEvent.click(approvalsTab);
+  await act(async () => { await wait(50); });
+
+  // Reject (confirm native confirm will default to true in jsdom)
+  const rejectBtn = await screen.findByRole('button', { name: 'Reject' });
+  fireEvent.click(rejectBtn);
+  await act(async () => { await wait(50); });
+
+  // Back to main and ensure cannot find it
+  window.location.hash = '#/';
+  await act(async () => { await wait(100); });
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
 
   const grid = await screen.findByRole('list');
   const items = within(grid).getAllByRole('listitem');
-  // Find card with our title
   const found = items.some((li) => within(li).queryByText('Test Brownie'));
-  expect(found).toBe(true);
+  expect(found).toBe(false);
+});
+
+test('Admin edit/delete works', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Approve first so it appears everywhere
+  const adminBtn = screen.getByRole('button', { name: /Admin/i });
+  fireEvent.click(adminBtn);
+  await act(async () => { await wait(50); });
+  const approvalsTab = await screen.findByRole('button', { name: 'Approvals' });
+  fireEvent.click(approvalsTab);
+  await act(async () => { await wait(50); });
+  const approveBtn = await screen.findByRole('button', { name: 'Approve' });
+  fireEvent.click(approveBtn);
+  await act(async () => { await wait(50); });
+
+  // Go to Recipes
+  const recipesTab = await screen.findByRole('button', { name: 'Recipes' });
+  fireEvent.click(recipesTab);
+  await act(async () => { await wait(50); });
+
+  // Click Edit via table (open editor)
+  const editBtn = await screen.findByRole('button', { name: 'Edit' });
+  fireEvent.click(editBtn);
+  const titleInput = await screen.findByLabelText(/Title\/Name/i);
+  fireEvent.change(titleInput, { target: { value: 'Test Brownie Admin Edited' } });
+  const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
+  fireEvent.click(saveBtn);
+  await act(async () => { await wait(100); });
+
+  // Now delete it
+  const deleteBtn = await screen.findByRole('button', { name: 'Delete' });
+  fireEvent.click(deleteBtn);
+  const confirmDel = await screen.findByRole('button', { name: 'Delete' });
+  fireEvent.click(confirmDel);
+  await act(async () => { await wait(100); });
+
+  // Back to main and ensure not present
+  window.location.hash = '#/';
+  await act(async () => { await wait(80); });
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie Admin Edited' } });
+  await act(async () => { await wait(250); });
+  const gridAfter = await screen.findByRole('list');
+  const itemsAfter = within(gridAfter).getAllByRole('listitem');
+  const foundAfter = itemsAfter.some((li) => within(li).queryByText('Test Brownie Admin Edited'));
+  expect(foundAfter).toBe(false);
 });
 
 test('editing a recipe updates its card and detail', async () => {

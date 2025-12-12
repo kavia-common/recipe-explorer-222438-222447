@@ -1,4 +1,5 @@
 import React from 'react';
+import { navigateTo } from '../data/admin';
 
 /**
  * Header with brand, search input, category filter, favorites filter, and theme toggle.
@@ -118,6 +119,16 @@ const Header = ({
             style={{ background: 'rgba(37,99,235,0.10)' }}
           >
             ➕ Add Recipe
+          </button>
+
+          <button
+            className="theme-toggle"
+            onClick={() => navigateTo('/admin/dashboard')}
+            aria-label="Admin"
+            title="Admin"
+            style={{ borderColor: 'var(--ocean-border)' }}
+          >
+            🛠️ Admin
           </button>
 
           <button

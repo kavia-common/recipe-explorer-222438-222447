@@ -1,0 +1,76 @@
+import React, { useMemo } from 'react';
+import { computeAnalytics } from '../../data/adminRecipes';
+
+/**
+ * PUBLIC_INTERFACE
+ * Admin Dashboard showing analytics without external libs.
+ */
+const Dashboard = ({ recipes }) => {
+  const metrics = useMemo(() => computeAnalytics(recipes), [recipes]);
+
+  const Bar = ({ label, value, max }) => {
+    const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    return (
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{label}</div>
+        <div style={{ height: 10, background: 'var(--ocean-bg)', border: '1px solid var(--ocean-border)', borderRadius: 999 }}>
+          <div
+            style={{
+              width: `${pct}%`,
+              height: '100%',
+              background: 'var(--ocean-primary)',
+              borderRadius: 999,
+              transition: 'width .3s ease'
+            }}
+          />
+        </div>
+        <div style={{ marginTop: 6, color: 'var(--ocean-muted)' }}>{value}</div>
+      </div>
+    );
+  };
+
+  const catMax = Math.max(1, ...Object.values(metrics.categoryCounts));
+  return (
+    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Totals</div>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="alert"><div>Total</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.total}</div></div>
+          <div className="alert"><div>Approved</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.approved}</div></div>
+          <div className="alert"><div>Pending</div><div style={{ fontSize: 20, fontWeight: 800 }}>{metrics.pending}</div></div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>Category distribution</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {Object.entries(metrics.categoryCounts).map(([cat, count]) => (
+              <Bar key={cat} label={cat} value={count} max={catMax} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Favorites & Top</div>
+        <div className="alert">Total favorites: <strong>{metrics.favoritesTotal}</strong></div>
+        <div style={{ fontWeight: 700, marginTop: 8, marginBottom: 6 }}>Top favorited (up to 5)</div>
+        <ul className="list">
+          {metrics.topFavorited.length === 0 && <li style={{ color: 'var(--ocean-muted)' }}>No favorites yet</li>}
+          {metrics.topFavorited.map((r) => (
+            <li key={r.id}>{r.title}</li>
+          ))}
+        </ul>
+        <div style={{ fontWeight: 700, marginTop: 8, marginBottom: 6 }}>Recently added</div>
+        <ul className="list">
+          {metrics.recentlyAdded.map((r) => (
+            <li key={r.id}>
+              <span style={{ fontWeight: 600 }}>{r.title}</span>
+              <span style={{ color: 'var(--ocean-muted)' }}> — {new Date(r.createdAt).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
