@@ -20,6 +20,8 @@ import Approvals from './components/admin/Approvals';
 import ShoppingListPage from './components/ShoppingListPage';
 import MealPlanPage from './components/MealPlanPage';
 import { addRecipeIngredientsToShoppingList } from './data/shoppingList';
+import ToastContainer from './components/ToastContainer';
+import { startNotificationScheduler, getNotificationSettings, saveNotificationSettings } from './data/notifications';
 
 const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
 const DIFFICULTY_LS_KEY = 'recipeExplorer:selectedDifficulty:v1';
@@ -140,8 +142,25 @@ function App() {
               setLocalRecipes(seeded);
             } catch {}
             setRecipes(seeded);
+            // Seed newRecipeAlerts seen set
+            try {
+              const s = getNotificationSettings?.();
+              if (s && s.newRecipeAlerts && Array.isArray(s.newRecipeAlerts.lastSeenRecipeIds) && s.newRecipeAlerts.lastSeenRecipeIds.length === 0) {
+                const approvedIds = seeded.filter(r => String(r.status).toLowerCase() === 'approved').map(r => String(r.id));
+                s.newRecipeAlerts.lastSeenRecipeIds = approvedIds;
+                saveNotificationSettings?.(s);
+              }
+            } catch {}
           } else {
             setRecipes(normalized);
+            try {
+              const s = getNotificationSettings?.();
+              if (s && s.newRecipeAlerts && Array.isArray(s.newRecipeAlerts.lastSeenRecipeIds) && s.newRecipeAlerts.lastSeenRecipeIds.length === 0) {
+                const approvedIds = normalized.filter(r => String(r.status).toLowerCase() === 'approved').map(r => String(r.id));
+                s.newRecipeAlerts.lastSeenRecipeIds = approvedIds;
+                saveNotificationSettings?.(s);
+              }
+            } catch {}
           }
         }
       } catch {
@@ -200,6 +219,37 @@ function App() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  // Notification scheduler initialization (runs every 60s)
+  useEffect(() => {
+    const getApproved = () => {
+      try {
+        const { getApprovedRecipes } = require('./data/adminRecipes');
+        return getApprovedRecipes(recipes);
+      } catch {
+        return recipes.filter(r => String(r.status).toLowerCase() === 'approved');
+      }
+    };
+    const getTodayPlan = () => {
+      try {
+        const { getWeekStartMondayISO, loadMealPlanForWeek, DAYS } = require('./data/mealPlan');
+        const today = new Date();
+        const weekISO = getWeekStartMondayISO(today);
+        const plan = loadMealPlanForWeek(weekISO);
+        const dow = (today.getDay() + 6) % 7; // Monday index 0
+        const dayKey = DAYS[dow];
+        const entries = plan?.days?.[dayKey] || [];
+        return [{ entries }];
+      } catch {
+        return [];
+      }
+    };
+    const stop = startNotificationScheduler({
+      getApprovedRecipes: getApproved,
+      getTodayPlan,
+    });
+    return () => { try { stop(); } catch {} };
+  }, [recipes]);
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -465,6 +515,7 @@ function App() {
         onCancel={() => { setConfirmOpen(false); setToDelete(null); }}
         onConfirm={confirmDelete}
       />
+      <ToastContainer />
       <footer className="footer">
         <span>Recipe Explorer</span>
         <span className="dot">•</span>

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { navigateTo } from '../data/admin';
+import NotificationSettings from './NotificationSettings';
 
 /**
  * Header with brand, search input, category filter, favorites filter, theme toggle, and nav.
@@ -35,6 +36,8 @@ const Header = ({
   difficultyOptions = ['All', 'Easy', 'Medium', 'Hard'],
   onAddRecipe = () => {},
 }) => {
+  const [showNotif, setShowNotif] = useState(false);
+
   const Pill = ({ label, active, onClick }) => (
     <button
       type="button"
@@ -157,6 +160,17 @@ const Header = ({
             🛠️ Admin
           </button>
 
+          {/* Notifications bell */}
+          <button
+            className="theme-toggle"
+            onClick={() => setShowNotif(true)}
+            aria-label="Notifications"
+            title="Notifications"
+            style={{ borderColor: 'var(--ocean-border)' }}
+          >
+            🔔
+          </button>
+
           {/* Theme toggle */}
           <button
             className="theme-toggle"
@@ -168,6 +182,7 @@ const Header = ({
           </button>
         </div>
       </div>
+      {showNotif && <NotificationSettings onClose={() => setShowNotif(false)} />}
     </header>
   );
 };

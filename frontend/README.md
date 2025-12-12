@@ -11,6 +11,29 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 - Client-side recipe management (add, edit, delete) with localStorage persistence
 - Admin section with Dashboard, Recipes management, and Approvals (fully client-side)
 - NEW: Shopping List and Weekly Meal Planning (client-side via localStorage)
+- NEW: Client-side Notifications (Web Notifications API with in-app toast fallback)
+
+## Notifications
+
+Client-side only, time-based while the tab is open:
+- Daily recipe suggestion (default 9:00 local, configurable)
+- Meal reminders (default 18:00 local, configurable)
+- New recipe added alerts (fires when an approved recipe appears)
+
+How to use:
+1. Click the bell icon in the header to open Notification Settings.
+2. Click Request Permission to allow browser notifications (optional). If denied, you’ll see in-app toasts instead.
+3. Enable the toggles and set times (HH:MM 24-hour).
+4. Click Test Notification to verify delivery.
+
+Limitations:
+- Works only while the application tab is open (no service workers or push).
+- Scheduler runs roughly every 60 seconds; delivery can be up to 1 minute after the exact time.
+- To avoid spam, daily suggestion sends at most once per day, and meal reminder at most once per day.
+
+Accessibility:
+- In-app toasts are announced with role=status and are dismissible.
+- Browser notifications inherit system accessibility.
 
 ## Getting Started
 - `npm start` launches on http://localhost:3000 by default.
