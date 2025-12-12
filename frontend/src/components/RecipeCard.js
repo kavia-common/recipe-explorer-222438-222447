@@ -154,6 +154,17 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
         </button>
         <button
           className="theme-toggle"
+          style={{ width: '100%', border: 'none', borderRadius: 0 }}
+          onClick={() => {
+            try {
+              window.dispatchEvent(new CustomEvent('collections:open', { detail: { recipe } }));
+            } catch {}
+          }}
+        >
+          📚 Add to Collection
+        </button>
+        <button
+          className="theme-toggle"
           style={{ width: '100%', border: 'none', borderRadius: 0, background: 'rgba(239,68,68,0.12)', borderColor: 'color-mix(in oklab, var(--ocean-error), var(--ocean-border))' }}
           onClick={() => onDelete(recipe)}
         >

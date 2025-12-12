@@ -14,6 +14,28 @@ A lightweight React SPA to browse, search, and view recipes with a modern, clean
 - Client-side Notifications (Web Notifications API with in-app toast fallback)
 - Community features (client-side): Comments, Likes/Share, Follow chefs, Chefs page, and Admin community analytics
 - NEW: Multilingual client-only translations with caching and fallbacks
+- NEW: Collections — create your own recipe collections, add/remove recipes, and view them on the Collections page
+
+## Collections
+
+Client-side collections allow organizing recipes without any backend.
+
+- Data model:
+  - Collections: { id, name, description?, createdAt, updatedAt } stored under localStorage key app_collections.
+  - Membership map: { [collectionId]: string[]recipeIds } stored under app_collection_members.
+- Usage:
+  - Navigate via the Collections link in the header (/collections).
+  - Create/Rename/Delete collections in the left pane; select a collection to view its recipes on the right.
+  - Add a recipe to collections from:
+    - Recipe card “More (⋯)” menu → “Add to Collection”
+    - Recipe detail modal → “Add to Collection” action
+  - In the Collections page, remove recipes from the selected collection using inline remove buttons.
+- Starter templates:
+  - Party Recipes, Quick Snacks, Kids Lunch Box, Festival Specials — created empty on click.
+- Admin:
+  - Dashboard shows Top Collections by recipe count (local-only).
+
+Persistence is local to your browser. Clearing storage will remove your collections.
 
 ## Multilingual Support
 

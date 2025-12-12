@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { computeAnalytics } from '../../data/adminRecipes';
 import { getCommunityMetrics } from '../../data/community';
 import { getTranslationStats } from '../../data/i18n';
+import { listCollections } from '../../data/collections';
 
 /**
  * PUBLIC_INTERFACE
@@ -26,6 +27,24 @@ const Dashboard = ({ recipes }) => {
             }}
           />
         </div>
+
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>Top Collections (by recipe count)</div>
+        {(() => {
+          const cols = listCollections().sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 5);
+          if (cols.length === 0) return <div className="alert">No collections yet.</div>;
+          return (
+            <ul className="list">
+              {cols.map((c) => (
+                <li key={c.id}>
+                  <span style={{ fontWeight: 600 }}>{c.name}</span>
+                  <span style={{ color: 'var(--ocean-muted)' }}> — {c.count} recipes</span>
+                </li>
+              ))}
+            </ul>
+          );
+        })()}
+      </div>
 
       <div className="card" style={{ padding: 12 }}>
         <div style={{ fontWeight: 800, marginBottom: 8 }}>Diet Types</div>

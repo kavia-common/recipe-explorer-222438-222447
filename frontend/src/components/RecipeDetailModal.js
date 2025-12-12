@@ -28,7 +28,16 @@ const RecipeDetailModal = ({
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onEsc);
     document.body.classList.add('body-lock');
-    return () => {
+    // Optional compact chips for collections (ensure defined)
+  let collectionChips = [];
+  try {
+    const { getRecipeCollections } = require('../data/collections');
+    collectionChips = recipeId ? getRecipeCollections(recipeId) : [];
+  } catch (e) {
+    collectionChips = [];
+  }
+
+  return () => {
       document.removeEventListener('keydown', onEsc);
       document.body.classList.remove('body-lock');
     };
@@ -45,6 +54,14 @@ const RecipeDetailModal = ({
   const fav = recipe ? isFavorite(recipe.id) : false;
 
   const [reviews, setReviews] = useState(() => (recipe ? getReviewsForRecipe(recipe.id) : []));
+  // Optional compact chips for collections (ensure defined in scope before render)
+  let collectionChips = [];
+  try {
+    const { getRecipeCollections } = require('../data/collections');
+    collectionChips = recipeId ? getRecipeCollections(recipeId) : [];
+  } catch (e) {
+    collectionChips = [];
+  }
   // Community state: likes, follows, comments
   const [likeCount, setLikeCount] = useState(() => (recipe ? getLikeCount(recipe.id) : 0));
   const [liked, setLiked] = useState(() => (recipe ? isLikedByMe(recipe.id) : false));
@@ -185,6 +202,15 @@ const RecipeDetailModal = ({
               <span className="tag" aria-label={`Average rating ${summary.averageRating} from ${summary.reviewCount} reviews`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
                 ⭐ {summary.averageRating} ({summary.reviewCount})
               </span>
+            )}
+            {Array.isArray(collectionChips) && collectionChips.length > 0 && (
+              <>
+                {collectionChips.map((c) => (
+                  <span key={c.id} className="tag" title="Collection" style={{ background: 'rgba(37,99,235,0.06)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>
+                    📚 {c.name}
+                  </span>
+                ))}
+              </>
             )}
             {Number.isFinite(Number(recipe.cookingTime)) && Number(recipe.cookingTime) >= 0 && (
               <span className="tag" aria-label={`Cooking time ${recipe.cookingTime} minutes`} style={{ background: 'rgba(37,99,235,0.08)', borderColor: 'color-mix(in oklab, var(--ocean-primary), var(--ocean-border))' }}>

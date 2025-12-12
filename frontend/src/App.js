@@ -21,6 +21,8 @@ import ShoppingListPage from './components/ShoppingListPage';
 import MealPlanPage from './components/MealPlanPage';
 import ChefsPage from './components/ChefsPage';
 import SettingsPage from './components/SettingsPage';
+import CollectionsPage from './components/CollectionsPage';
+import CollectionSelectModal from './components/CollectionSelectModal';
 import { addRecipeIngredientsToShoppingList } from './data/shoppingList';
 import ToastContainer from './components/ToastContainer';
 import { startNotificationScheduler, getNotificationSettings, saveNotificationSettings } from './data/notifications';
@@ -54,6 +56,8 @@ function App() {
   const [err, setErr] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const [collectionFor, setCollectionFor] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [favoriteIds, setFavoriteIdsState] = useState(() => getFavoriteIds());
@@ -404,6 +408,14 @@ function App() {
     return () => window.removeEventListener('openAddRecipe', handler);
   }, []);
   const openEditFromCard = (recipe) => { setEditing(recipe); setShowForm(true); };
+  useEffect(() => {
+    const handler = (e) => {
+      const r = e?.detail?.recipe;
+      if (r) { setCollectionFor(r); setCollectionsOpen(true); }
+    };
+    window.addEventListener('collections:open', handler);
+    return () => window.removeEventListener('collections:open', handler);
+  }, []);
   const openEditFromModal = (recipe) => { setEditing(recipe); setShowForm(true); };
   const openDelete = (recipe) => { setToDelete(recipe); setConfirmOpen(true); };
 
@@ -536,6 +548,13 @@ function App() {
     if (route === '/chefs') {
       return <ChefsPage recipes={recipes} />;
     }
+    if (route === '/collections') {
+      return (
+        <main className="container">
+          <CollectionsPage allRecipes={recipes} />
+        </main>
+      );
+    }
     if (route === '/settings') {
       return <SettingsPage />;
     }
@@ -614,7 +633,18 @@ function App() {
             label: 'Add ingredients to shopping list',
             onClick: () => addIngredientsFromModal(selected),
           },
+          selected && {
+            key: 'add-to-collection',
+            label: 'Add to Collection',
+            onClick: () => { setCollectionFor(selected); setCollectionsOpen(true); },
+          },
         ].filter(Boolean)}
+      />
+
+      <CollectionSelectModal
+        recipe={collectionFor}
+        open={collectionsOpen}
+        onClose={() => { setCollectionsOpen(false); setCollectionFor(null); }}
       />
 
       {showForm && (
