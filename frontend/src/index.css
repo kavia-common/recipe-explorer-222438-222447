@@ -1,3 +1,4 @@
+/* Allow natural document height and scrolling; avoid 100vh traps on wrappers */
 html, body, #root {
   height: auto;
   min-height: 100%;
@@ -9,7 +10,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-y: auto;
+  overflow-y: auto; /* background scroll enabled normally; locked via .body-lock on modal */
 }
 
 code {

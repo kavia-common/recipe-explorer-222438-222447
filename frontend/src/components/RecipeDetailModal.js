@@ -58,7 +58,7 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
             <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" role="document">
           <img
             className="detail-img"
             src={recipe.image}

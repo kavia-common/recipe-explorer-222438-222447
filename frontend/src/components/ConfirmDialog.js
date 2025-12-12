@@ -32,7 +32,7 @@ const ConfirmDialog = ({ open, title = 'Confirm', message = 'Are you sure?', onC
           <div className="modal-title">{title}</div>
           <button className="modal-close" onClick={onCancel} aria-label="Close">✕</button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" role="document">
           <p style={{ marginBottom: 14 }}>{message}</p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="theme-toggle" onClick={onCancel}>Cancel</button>

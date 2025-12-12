@@ -389,7 +389,7 @@ function App() {
               <div className="modal-title">{editing ? 'Edit Recipe' : 'Add Recipe'}</div>
               <button className="modal-close" aria-label="Close" onClick={() => setShowForm(false)}>✕</button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" role="document">
               <RecipeForm
                 initial={editing}
                 onCancel={() => setShowForm(false)}

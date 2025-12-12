@@ -231,21 +231,33 @@ body {
   position: relative;
   width: 100%;
 }
+
+/* Modal container with viewport-relative max-height and internal scroll */
 .modal {
   background: var(--ocean-surface);
   border: 1px solid var(--ocean-border);
   border-radius: 16px;
   max-width: 760px;
   width: 100%;
+  max-height: 90vh; /* Allow room on top/bottom; avoid 100vh trapping */
   box-shadow: 0 30px 60px rgba(2,6,23,0.35);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* clip corners; scrolling handled by body content */
 }
+
+/* Keep header visible while content scrolls */
 .modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--ocean-border);
+  background: color-mix(in oklab, var(--ocean-surface) 96%, transparent);
+  backdrop-filter: saturate(160%) blur(4px);
 }
 .modal-title {
   font-weight: 800;
@@ -258,8 +270,35 @@ body {
   cursor: pointer;
   color: var(--ocean-muted);
 }
+
+/* Scrollable content area */
 .modal-body {
   padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Small screens: full-screen drawer/modal with internal scroll */
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 0; /* allow modal to truly fill screen */
+  }
+  .modal {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh; /* full height on mobile */
+    border-radius: 0;
+  }
+  .modal-header {
+    padding-top: env(safe-area-inset-top, 14px);
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
+  }
+  .modal-body {
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
 }
 .detail-img {
   width: 100%;

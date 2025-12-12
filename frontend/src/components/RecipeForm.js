@@ -110,6 +110,7 @@ const RecipeForm = ({ initial = null, onCancel = () => {}, onSave = () => {} }) 
           style={inputStyle}
           placeholder="e.g., Classic Margherita Pizza"
           required
+          autoFocus
         />
       </div>
 
