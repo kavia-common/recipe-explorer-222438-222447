@@ -5,7 +5,7 @@ import RecipeCard from './RecipeCard';
  * RecipeGrid renders a responsive grid of RecipeCard components.
  * PUBLIC_INTERFACE
  */
-const RecipeGrid = ({ items, onSelect, isFavorite = () => false, onToggleFavorite = () => {} }) => {
+const RecipeGrid = ({ items, onSelect, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
   if (!items || items.length === 0) {
     return (
       <div className="alert" role="status">
@@ -23,6 +23,8 @@ const RecipeGrid = ({ items, onSelect, isFavorite = () => false, onToggleFavorit
           onClick={() => onSelect(r)}
           isFavorite={isFavorite}
           onToggleFavorite={onToggleFavorite}
+          onEdit={onEdit}
+          onDelete={onDelete}
         />
       ))}
     </div>

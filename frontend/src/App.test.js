@@ -5,6 +5,37 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Helper to add a recipe through the UI
+async function addRecipeFlow() {
+  const addBtn = await screen.findByRole('button', { name: /add recipe/i });
+  fireEvent.click(addBtn);
+
+  const titleInput = await screen.findByLabelText(/Title\/Name/i);
+  fireEvent.change(titleInput, { target: { value: 'Test Brownie' } });
+
+  const descInput = screen.getByLabelText(/Description/i);
+  fireEvent.change(descInput, { target: { value: 'Fudgy brownie test' } });
+
+  const imgInput = screen.getByLabelText(/Image URL/i);
+  fireEvent.change(imgInput, { target: { value: 'https://example.com/brownie.jpg' } });
+
+  const ingInput = screen.getByLabelText(/Ingredients/i);
+  fireEvent.change(ingInput, { target: { value: 'Flour\nCocoa\nSugar\nButter' } });
+
+  const stepsInput = screen.getByLabelText(/Steps/i);
+  fireEvent.change(stepsInput, { target: { value: 'Mix\nBake' } });
+
+  // Select category Desserts
+  const catBtn = screen.getByRole('button', { name: 'Desserts' });
+  fireEvent.click(catBtn);
+
+  const saveBtn = screen.getByRole('button', { name: /Add Recipe/i });
+  fireEvent.click(saveBtn);
+
+  // wait a tick
+  await act(async () => { await wait(50); });
+}
+
 test('renders header title', () => {
   render(<App />);
   const title = screen.getByText(/Recipe Explorer/i);
@@ -99,4 +130,88 @@ test('search by ingredient returns matching items', async () => {
   const gridAfter = await screen.findByRole('list');
   const itemsAfter = within(gridAfter).getAllByRole('listitem');
   expect(itemsAfter.length).toBeGreaterThan(0);
+});
+
+test('adding a recipe appears in grid with selected category', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Filter to Desserts and ensure our new recipe is present
+  const dessertsPill = await screen.findByRole('button', { name: 'Desserts' });
+  fireEvent.click(dessertsPill);
+
+  const grid = await screen.findByRole('list');
+  const items = within(grid).getAllByRole('listitem');
+  // Find card with our title
+  const found = items.some((li) => within(li).queryByText('Test Brownie'));
+  expect(found).toBe(true);
+});
+
+test('editing a recipe updates its card and detail', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Open newly added recipe by searching quick
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  const grid = await screen.findByRole('list');
+  const card = within(grid).getAllByRole('listitem')[0];
+  fireEvent.click(card);
+
+  // In modal, click Edit
+  const editBtn = await screen.findByRole('button', { name: /Edit recipe/i });
+  fireEvent.click(editBtn);
+
+  const titleInput = await screen.findByLabelText(/Title\/Name/i);
+  fireEvent.change(titleInput, { target: { value: 'Test Brownie Updated' } });
+
+  const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
+  fireEvent.click(saveBtn);
+  await act(async () => { await wait(100); });
+
+  // Close modal if still open
+  const maybeClose = screen.queryByLabelText('Close');
+  if (maybeClose) fireEvent.click(maybeClose);
+
+  // Search for updated
+  fireEvent.change(input, { target: { value: 'Updated' } });
+  await act(async () => { await wait(250); });
+  const grid2 = await screen.findByRole('list');
+  const items2 = within(grid2).getAllByRole('listitem');
+  const foundUpdated = items2.some((li) => within(li).queryByText('Test Brownie Updated'));
+  expect(foundUpdated).toBe(true);
+});
+
+test('deleting a recipe removes it from the list', async () => {
+  render(<App />);
+  await addRecipeFlow();
+
+  // Narrow search
+  const input = screen.getByLabelText('Search input');
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  let grid = await screen.findByRole('list');
+  let card = within(grid).getAllByRole('listitem')[0];
+  fireEvent.click(card);
+
+  const delBtn = await screen.findByRole('button', { name: /Delete recipe/i });
+  fireEvent.click(delBtn);
+
+  const confirmBtn = await screen.findByRole('button', { name: 'Delete' });
+  fireEvent.click(confirmBtn);
+  await act(async () => { await wait(100); });
+
+  // Now the list should not contain the item
+  fireEvent.change(input, { target: { value: 'Test Brownie' } });
+  await act(async () => { await wait(250); });
+
+  const gridAfter = screen.queryByRole('list');
+  if (gridAfter) {
+    const items = within(gridAfter).getAllByRole('listitem');
+    const stillThere = items.some((li) => within(li).queryByText('Test Brownie'));
+    expect(stillThere).toBe(false);
+  }
 });

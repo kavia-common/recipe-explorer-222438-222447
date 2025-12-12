@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
  * RecipeDetailModal renders selected recipe details in a modal.
  * PUBLIC_INTERFACE
  */
-const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggleFavorite = () => {} }) => {
+const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
   useEffect(() => {
     function onEsc(e) { if (e.key === 'Escape') onClose(); }
     if (recipe) {
@@ -22,7 +22,7 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
       <div className="modal" onClick={(e)=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{recipe.title}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
               title={fav ? 'Remove from favorites' : 'Add to favorites'}
@@ -31,6 +31,24 @@ const RecipeDetailModal = ({ recipe, onClose, isFavorite = () => false, onToggle
               style={{ padding: '6px 10px' }}
             >
               {fav ? '❤️ Favorited' : '🤍 Favorite'}
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={() => onEdit(recipe)}
+              aria-label="Edit recipe"
+              title="Edit"
+              style={{ padding: '6px 10px' }}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={() => onDelete(recipe)}
+              aria-label="Delete recipe"
+              title="Delete"
+              style={{ padding: '6px 10px', background: 'rgba(239,68,68,0.12)', borderColor: 'color-mix(in oklab, var(--ocean-error), var(--ocean-border))' }}
+            >
+              🗑️ Delete
             </button>
             <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
           </div>

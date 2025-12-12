@@ -13,6 +13,7 @@ import React from 'react';
  * - category: string
  * - onCategoryChange: (cat: string) => void
  * - categoryOptions: string[]
+ * - onAddRecipe?: () => void
  */
 const Header = ({
   theme,
@@ -25,6 +26,7 @@ const Header = ({
   category = 'All',
   onCategoryChange = () => {},
   categoryOptions = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'],
+  onAddRecipe = () => {},
 }) => {
   const Pill = ({ label, active, onClick }) => (
     <button
@@ -106,6 +108,16 @@ const Header = ({
             }}
           >
             <span aria-hidden>❤️</span> Favorites{favoritesCount ? ` (${favoritesCount})` : ''}
+          </button>
+
+          <button
+            className="theme-toggle"
+            onClick={onAddRecipe}
+            aria-label="Add Recipe"
+            title="Add Recipe"
+            style={{ background: 'rgba(37,99,235,0.10)' }}
+          >
+            ➕ Add Recipe
           </button>
 
           <button

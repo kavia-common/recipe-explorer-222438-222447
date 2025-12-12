@@ -7,6 +7,9 @@ import RecipeGrid from './components/RecipeGrid';
 import RecipeDetailModal from './components/RecipeDetailModal';
 import Header from './components/Header';
 import { getFavoriteIds, toggleFavorite } from './data/favorites';
+import RecipeForm from './components/RecipeForm';
+import ConfirmDialog from './components/ConfirmDialog';
+import { mergeWithLocal, upsertLocalRecipe, deleteLocalRecipe, genId, getLocalRecipes, setLocalRecipes } from './data/recipes';
 
 const CATEGORY_LS_KEY = 'recipeExplorer:selectedCategory:v1';
 const CATEGORY_OPTIONS = ['All', 'Veg', 'Non-Veg', 'Desserts', 'Drinks'];
@@ -27,6 +30,10 @@ function App() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
   const [favoriteIds, setFavoriteIdsState] = useState(() => getFavoriteIds());
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [category, setCategory] = useState(() => {
@@ -105,7 +112,8 @@ function App() {
         if (!cancelled) {
           const arr = Array.isArray(data) ? data : [];
           // ensure category and ingredients fields exist/normalized
-          const normalized = arr.map((r) => {
+          const merged = mergeWithLocal(arr);
+          const normalized = merged.map((r) => {
             // Normalize ingredients: allow string or array, store as array of strings for UI, and a joined string for searching
             const ingRaw = r.ingredients;
             let ingredientsArray = [];
@@ -138,7 +146,8 @@ function App() {
       } catch {
         // Any unexpected error -> fallback to mock silently; keep UI responsive
         if (!cancelled) {
-          const normalized = mockRecipes.map((r) => {
+          const merged = mergeWithLocal(mockRecipes);
+          const normalized = merged.map((r) => {
             const ingRaw = r.ingredients;
             let ingredientsArray = [];
             if (Array.isArray(ingRaw)) {
@@ -228,6 +237,96 @@ function App() {
   // PUBLIC_INTERFACE
   const isFav = (id) => favoriteIds.includes(id);
 
+  const openAdd = () => {
+    setEditing(null);
+    setShowForm(true);
+  };
+
+  const openEditFromCard = (recipe) => {
+    setEditing(recipe);
+    setShowForm(true);
+  };
+
+  const openEditFromModal = (recipe) => {
+    setEditing(recipe);
+    setShowForm(true);
+  };
+
+  const openDelete = (recipe) => {
+    setToDelete(recipe);
+    setConfirmOpen(true);
+  };
+
+  const normalizeForSearch = (r) => {
+    const ing = Array.isArray(r.ingredients) ? r.ingredients : [];
+    const cat = r.category || 'Veg';
+    return {
+      ...r,
+      category: cat,
+      _ingredientsText: ing.join(' ').toLowerCase(),
+      _titleText: String(r.title || '').toLowerCase(),
+      _descText: String(r.description || '').toLowerCase(),
+      _tagsText: (r.tags || []).map((t) => String(t)).join(' ').toLowerCase(),
+      _categoryText: String(cat).toLowerCase(),
+    };
+  };
+
+  const saveRecipe = (draft) => {
+    const now = new Date().toISOString();
+    let toSave = { ...draft };
+    if (!toSave.id) {
+      toSave.id = genId();
+      toSave.createdAt = now;
+    } else {
+      // preserve createdAt if exists
+      toSave.createdAt = draft.createdAt || now;
+    }
+    toSave.updatedAt = now;
+    if (!toSave.category) toSave.category = 'Veg';
+
+    // Persist to localStorage first
+    upsertLocalRecipe(toSave);
+
+    // Update in-memory list (preserve favorites by id)
+    setRecipes((prev) => {
+      const idKey = String(toSave.id);
+      const idx = prev.findIndex((r) => String(r.id) === idKey);
+      const normalized = normalizeForSearch(toSave);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = normalized;
+        return next;
+      }
+      return [normalized, ...prev];
+    });
+
+    setShowForm(false);
+    setEditing(null);
+  };
+
+  const confirmDelete = () => {
+    if (!toDelete) return;
+    const idKey = String(toDelete.id);
+
+    // Remove from local storage
+    deleteLocalRecipe(idKey);
+
+    // Remove in memory and clean favorite if set
+    setRecipes((prev) => prev.filter((r) => String(r.id) !== idKey));
+    if (favoriteIds.includes(toDelete.id)) {
+      // remove from favorites and persist
+      const nextFavs = favoriteIds.filter((fid) => String(fid) !== idKey);
+      try {
+        window.localStorage.setItem('favoriteRecipeIds:v1', JSON.stringify(nextFavs));
+      } catch {}
+      setFavoriteIdsState(nextFavs);
+    }
+
+    setConfirmOpen(false);
+    setToDelete(null);
+    if (selected && String(selected.id) === idKey) setSelected(null);
+  };
+
   return (
     <div className="app-root">
       <Header
@@ -241,6 +340,7 @@ function App() {
         category={category}
         onCategoryChange={(c) => setCategory(c)}
         categoryOptions={CATEGORY_OPTIONS}
+        onAddRecipe={openAdd}
       />
       <main className="container">
         {err && <div role="alert" className="alert alert-warn">{err}</div>}
@@ -256,6 +356,8 @@ function App() {
             onSelect={setSelected}
             isFavorite={isFav}
             onToggleFavorite={onToggleFavorite}
+            onEdit={openEditFromCard}
+            onDelete={openDelete}
           />
         )}
       </main>
@@ -264,6 +366,34 @@ function App() {
         onClose={() => setSelected(null)}
         isFavorite={isFav}
         onToggleFavorite={onToggleFavorite}
+        onEdit={openEditFromModal}
+        onDelete={openDelete}
+      />
+
+      {showForm && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={editing ? 'Edit Recipe' : 'Add Recipe'} onClick={() => setShowForm(false)}>
+          <div className="modal" onClick={(e)=>e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{editing ? 'Edit Recipe' : 'Add Recipe'}</div>
+              <button className="modal-close" aria-label="Close" onClick={() => setShowForm(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <RecipeForm
+                initial={editing}
+                onCancel={() => setShowForm(false)}
+                onSave={saveRecipe}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete Recipe"
+        message={toDelete ? `Are you sure you want to delete "${toDelete.title}"?` : 'Are you sure you want to delete this recipe?'}
+        onCancel={() => { setConfirmOpen(false); setToDelete(null); }}
+        onConfirm={confirmDelete}
       />
       <footer className="footer">
         <span>Recipe Explorer</span>

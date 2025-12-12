@@ -7,8 +7,10 @@ import React from 'react';
  * - onClick: function (card click)
  * - isFavorite?: (id) => boolean
  * - onToggleFavorite?: (id) => void
+ * - onEdit?: (recipe) => void
+ * - onDelete?: (recipe) => void
  */
-const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {} }) => {
+const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorite = () => {}, onEdit = () => {}, onDelete = () => {} }) => {
   const { title, image, description, tags = [], category } = recipe;
   const fav = isFavorite(recipe.id);
 
@@ -60,6 +62,57 @@ const RecipeCard = ({ recipe, onClick, isFavorite = () => false, onToggleFavorit
       >
         {fav ? '❤️' : '🤍'}
       </button>
+      <button
+        aria-label="More actions"
+        title="More"
+        onClick={(e) => { e.stopPropagation(); const menu = e.currentTarget.nextSibling; if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; }}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 60,
+          zIndex: 1,
+          border: '1px solid var(--ocean-border)',
+          background: 'var(--ocean-surface)',
+          color: 'var(--ocean-text)',
+          padding: '6px 10px',
+          borderRadius: 999,
+          cursor: 'pointer',
+          boxShadow: 'var(--ocean-shadow)'
+        }}
+      >
+        ⋯
+      </button>
+      <div
+        style={{
+          display: 'none',
+          position: 'absolute',
+          top: 46,
+          right: 10,
+          zIndex: 2,
+          border: '1px solid var(--ocean-border)',
+          background: 'var(--ocean-surface)',
+          borderRadius: 12,
+          boxShadow: 'var(--ocean-shadow)',
+          overflow: 'hidden',
+          minWidth: 140
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          className="theme-toggle"
+          style={{ width: '100%', border: 'none', borderRadius: 0 }}
+          onClick={() => onEdit(recipe)}
+        >
+          ✏️ Edit
+        </button>
+        <button
+          className="theme-toggle"
+          style={{ width: '100%', border: 'none', borderRadius: 0, background: 'rgba(239,68,68,0.12)', borderColor: 'color-mix(in oklab, var(--ocean-error), var(--ocean-border))' }}
+          onClick={() => onDelete(recipe)}
+        >
+          🗑️ Delete
+        </button>
+      </div>
       <img
         className="card-img"
         src={image}
